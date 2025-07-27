@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'form',
-    
+    'lecture',  # Assuming you have a lecture app
+
 ]
 
 MIDDLEWARE = [
