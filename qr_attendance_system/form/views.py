@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from .forms import SForm  # Import your actual form
 
-def student_form_view(request):  # Use a lowercase function name
+def submit_attendance(request):  # Use a lowercase function name
     class_title = request.GET.get('class_title', 'Unknown Class')
 
     if request.method == 'POST':
