@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from .forms import StudentForm
+
 
 def submit_attendance(request):
     class_title = request.GET.get('class_title', 'Unknown Class')  # default fallback
