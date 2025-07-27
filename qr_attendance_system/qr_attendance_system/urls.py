@@ -17,8 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.urls import include,path
+from django.shortcuts import redirect
 
 urlpatterns = [
+    path('', lambda request: redirect('form/')),
     path('admin/', admin.site.urls),
     path('form/', include('form.urls')),  # Include URLs from the form app
 ]
