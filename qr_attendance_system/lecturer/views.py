@@ -81,44 +81,61 @@ def add_course(request):
 def generate_qr(request, course_id):
     """Generate QR code for a course"""
     try:
-        course = Course.objects.get(id=course_id, lecturer=request.user)
+        course = Course.objects.get(id=course_id)
+        if not course.lecturer == request.user:
+            return JsonResponse({'error': 'You do not have permission to generate QR code for this course'}, status=403)
+
+        # Create QR code data
+        qr_data = {
+            'course_id': course.id,
+            'title': course.title,
+            'day': course.day,
+            'start_time': course.start_time.strftime('%H:%M'),
+            'end_time': course.end_time.strftime('%H:%M'),
+            'timestamp': timezone.now().isoformat()
+        }
+
+        # Generate QR code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(json.dumps(qr_data))
+        qr.make(fit=True)
+
+        # Create image
+        img = qr.make_image(fill_color="black", back_color="white")
         
-        # Generate QR code URL
-        qr_url = f'/lecturer/attendance/{course_id}/'
+        # Save to media storage
+        filename = f'qr_{course.id}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.png'
+        filepath = os.path.join('qr_codes', filename)
         
-        # Generate QR code image
-        qr = qrcode.make(qr_url)
-        qr_filename = f'qr_{course_id}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.png'
-        qr_path = f'qr_codes/{qr_filename}'
+        # Create BytesIO object
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
         
-        # Save QR code to media storage
-        with default_storage.open(qr_path, 'wb') as f:
-            qr.save(f)
+        # Create File object
+        file = File(buffer, name=filename)
         
-        # Update course with new QR code
-        course.qr_code = qr_path
-        course.qr_code_url = qr_url
+        # Save to model
+        course.qr_code.save(filename, file)
+        course.qr_code_url = request.build_absolute_uri(course.qr_code.url)
         course.save()
         
+        # Return JSON response
         return JsonResponse({
             'success': True,
-            'qr_code_url': request.build_absolute_uri(course.qr_code.url),
+            'qr_code_url': course.qr_code_url,
             'message': 'QR code generated successfully'
         })
+
     except Course.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'message': 'Course not found'
-        }, status=404)
+        return JsonResponse({'error': 'Course not found'}, status=404)
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': str(e)
-        }, status=500)
+        return JsonResponse({'error': str(e)}, status=500)
 
-
-def logout_view(request):
-    """Logout view for lecturers"""
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('lecturer:login')
