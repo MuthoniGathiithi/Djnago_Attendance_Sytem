@@ -23,4 +23,6 @@ urlpatterns = [
     path('', lambda request: redirect('form/')),
     path('admin/', admin.site.urls),
     path('form/', include('form.urls')),  # Include URLs from the form app
-]
+    path('lecture/', include('lecture.urls')),  # Include URLs from the lecture app
+]  
+
