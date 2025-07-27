@@ -122,3 +122,30 @@ def logout_view(request):
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('lecturer:login')
+
+
+def attendance_view(request, course_id):
+    """View for student attendance submission"""
+    try:
+        course = Course.objects.get(id=course_id)
+        if request.method == 'POST':
+            form = AttendanceForm(request.POST, course=course)
+            if form.is_valid():
+                attendance = form.save()
+                messages.success(request, 'Attendance marked successfully!')
+                return redirect('lecturer:attendance', course_id=course_id)
+        else:
+            form = AttendanceForm(course=course)
+        
+        # Get recent attendance records for this course
+        recent_attendance = Attendance.objects.filter(course=course).order_by('-timestamp')[:5]
+        
+        return render(request, 'lecturer/attendance.html', {
+            'form': form,
+            'course': course,
+            'recent_attendance': recent_attendance,
+            'title': f'Attendance - {course.title}'
+        })
+    except Course.DoesNotExist:
+        messages.error(request, 'Course not found')
+        return redirect('lecturer:dashboard')

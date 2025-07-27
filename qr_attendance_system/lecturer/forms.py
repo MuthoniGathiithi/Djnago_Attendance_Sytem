@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
-from .models import Course
+from .models import Course, Attendance
 
 
 User = get_user_model()
@@ -98,3 +98,43 @@ class QRCodeGenerationForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['qr_code'].widget.attrs.update({'class': 'form-input'})
+
+class AttendanceForm(forms.ModelForm):
+    """Form for student attendance submission"""
+    student_name = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Enter your full name'
+        })
+    )
+    student_admin_no = forms.CharField(
+        max_length=20,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Enter your student ID'
+        })
+    )
+
+    class Meta:
+        model = Attendance
+        fields = ('student_name', 'student_admin_no')
+
+    def __init__(self, *args, **kwargs):
+        self.course = kwargs.pop('course', None)
+        super().__init__(*args, **kwargs)
+        self.fields['student_name'].widget.attrs.update({'autofocus': True})
+
+    def clean_student_admin_no(self):
+        admin_no = self.cleaned_data.get('student_admin_no')
+        if not admin_no:
+            raise forms.ValidationError('Student ID is required')
+        return admin_no
+
+    def save(self, commit=True):
+        attendance = super().save(commit=False)
+        if self.course:
+            attendance.course = self.course
+        if commit:
+            attendance.save()
+        return attendance
