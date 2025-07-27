@@ -1,19 +1,11 @@
-from django.shortcuts import render, redirect
+from django.db import models
 
+class Studentform(models.Model):
+    name = models.CharField(max_length=100)
+    course = models.CharField(max_length=100)
+    admin_no = models.CharField(max_length=20)
 
-def submit_attendance(request):
-    class_title = request.GET.get('class_title', 'Unknown Class')  # default fallback
+    def __str__(self):
+        return self.name
 
-    if request.method == 'POST':
-        form = StudentForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return render(request, 'form/success.html', {'class_title': class_title})
-    else:
-        form = StudentForm()
-
-    return render(request, 'form/attendance_form.html', {
-        'form': form,
-        'class_title': class_title
-    })
 

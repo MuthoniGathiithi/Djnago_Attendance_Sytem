@@ -1,8 +1,8 @@
 from django import forms
 
-from .models import studentform
+from .models import Studentform
 
-class StudentForm(forms.ModelForm):
+class SForm(forms.ModelForm):
     class Meta:
-        model = studentform
+        model = Studentform
         fields = ['name', 'course', 'admin_no']

@@ -1,15 +1,19 @@
-from django.shortcuts import render,redirect
-from .forms import StudentForm
+from django.shortcuts import render, redirect
+from .forms import SForm  # Import your actual form
 
-def submit_attedance(request):
+def student_form_view(request):  # Use a lowercase function name
+    class_title = request.GET.get('class_title', 'Unknown Class')
+
     if request.method == 'POST':
-        form = StudentForm(request.POST)
+        form = SForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('success')  # Redirect to a success page or another view
+            return render(request, 'form/success.html', {'class_title': class_title})
     else:
-        form = StudentForm()
-    
-    return render(request, 'attendance_form.html', {'form': form})
+        form = SForm()
 
-# Create your views here.
+    return render(request, 'form/attendance_form.html', {
+        'form': form,
+        'class_title': class_title
+    })
+# qr_attendance_system/form/views.py
