@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
-from .models import Course, Attendance
+from .models import Course, Attendance, Lecturer
 
 
 User = get_user_model()
@@ -15,7 +15,7 @@ class LecturerRegistrationForm(UserCreationForm):
     phone_number = forms.CharField(max_length=15, required=False, widget=forms.TextInput(attrs={'placeholder': 'Phone Number (Optional)'}))
 
     class Meta:
-        model = User
+        model = Lecturer
         fields = ('username', 'first_name', 'last_name', 'email', 'department', 'phone_number', 'password1', 'password2')
 
     def __init__(self, *args, **kwargs):
@@ -32,12 +32,10 @@ class LecturerRegistrationForm(UserCreationForm):
         user.email = self.cleaned_data['email']
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
+        user.phone_number = self.cleaned_data['phone_number']
+        user.department = self.cleaned_data['department']
         
         if commit:
-            user.save()
-            # Save additional lecturer fields
-            user.phone_number = self.cleaned_data['phone_number']
-            user.department = self.cleaned_data['department']
             user.save()
         
         return user

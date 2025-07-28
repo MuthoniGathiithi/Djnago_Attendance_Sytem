@@ -40,7 +40,9 @@ def register(request):
     if request.method == 'POST':
         form = LecturerRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            user = form.save(commit=False)
+            user.is_staff = True  # Ensure lecturer has staff privileges
+            user.save()
             login(request, user)
             messages.success(request, 'Registration successful! You are now logged in.')
             return redirect('lecturer:dashboard')
@@ -56,14 +58,20 @@ def register(request):
 
 from django.http import HttpResponse
 
-@login_required
+
 @login_required
 def dashboard(request):
     """Lecturer dashboard view showing their courses"""
-    # request.user is already a Lecturer instance
-    lecturer = request.user
+    # Make sure we have a Lecturer instance
+    if not hasattr(request.user, 'department'):  # Check if it's a Lecturer
+        # If not, create a Lecturer instance from the User
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        lecturer = User.objects.get(pk=request.user.pk)
+    else:
+        lecturer = request.user
+        
     courses = Course.objects.filter(lecturer=lecturer)
-
     return render(request, 'lecturer/dashboard.html', {
         'courses': courses,
         'title': 'Lecturer Dashboard'
