@@ -15,14 +15,13 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
-from django.urls import include,path
-from django.shortcuts import redirect
+from django.urls import path, include
+from django.views.generic import RedirectView
 
 urlpatterns = [
-    path('', lambda request: redirect('form/')),
     path('admin/', admin.site.urls),
-    path('form/', include('form.urls')),  # Include URLs from the form app
-    path('lecture/', include('lecture.urls')),  # Include URLs from the lecture app
-]  
-
+    path('lecturer/', include('lecturer.urls')),
+    path('form/', include('form.urls')),
+    # Redirect root URL to lecturer login page
+    path('', RedirectView.as_view(url='lecturer/login/'), name='root_redirect'),
+]

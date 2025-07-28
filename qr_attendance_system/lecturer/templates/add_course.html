@@ -1,0 +1,593 @@
+<!-- lecturer/add_course.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Course - Lecturer Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #ffffff;
+            color: #000000;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .header {
+            background-color: #ffffff;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #000000;
+        }
+
+        .back-btn {
+            background-color: #ffffff;
+            color: #000000;
+            border: 2px solid #000000;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn:hover {
+            background-color: #000000;
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .main-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 600;
+            color: #000000;
+            margin-bottom: 10px;
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: #666666;
+        }
+
+        .form-container {
+            background-color: #ffffff;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #000000;
+            margin-bottom: 8px;
+        }
+
+        .required {
+            color: #dc2626;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            color: #000000;
+            background-color: #ffffff;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: #000000;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .form-select {
+            cursor: pointer;
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: #666666;
+            margin-top: 6px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: 2px solid;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: #000000;
+            color: #ffffff;
+            border-color: #000000;
+        }
+
+        .btn-primary:hover {
+            background-color: #333333;
+            border-color: #333333;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            color: #000000;
+            border-color: #000000;
+        }
+
+        .btn-secondary:hover {
+            background-color: #f5f5f5;
+            transform: translateY(-1px);
+        }
+
+        .messages {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+        }
+
+        .alert-error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
+
+        .errorlist {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .errorlist li {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+        .field-error .form-input,
+        .field-error .form-select {
+            border-color: #dc2626;
+        }
+
+        .time-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .form-section {
+            margin-bottom: 35px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #000000;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .main-content {
+                padding: 20px 15px;
+            }
+
+            .form-container {
+                padding: 25px 20px;
+            }
+
+            .page-title {
+                font-size: 26px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+
+            .time-inputs {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="header-title">Add New Course</h1>
+            <a href="{% url 'lecturer:dashboard' %}" class="back-btn">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+                </svg>
+                Back to Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h2 class="page-title">Create New Course</h2>
+            <p class="page-subtitle">Add a new course to your teaching schedule</p>
+        </div>
+
+        <!-- Form Container -->
+        <div class="form-container">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- Course Information Section -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <svg class="section-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Course Information
+                    </h3>
+
+                    <div class="form-group">
+                        <label for="id_title" class="form-label">
+                            Course Title <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            name="title" 
+                            id="id_title" 
+                            class="form-input" 
+                            placeholder="e.g., Introduction to Computer Science"
+                            value="{{ form.title.value|default:'' }}"
+                            required
+                        >
+                        {% if form.title.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.title.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        <div class="form-help">Enter the full name of your course</div>
+                    </div>
+                </div>
+
+                <!-- Schedule Section -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <svg class="section-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+                        </svg>
+                        Schedule
+                    </h3>
+
+                    <div class="form-group">
+                        <label for="id_day" class="form-label">
+                            Day of Week <span class="required">*</span>
+                        </label>
+                        <select name="day" id="id_day" class="form-select" required>
+                            <option value="">Select a day</option>
+                            <option value="Monday" {% if form.day.value == 'Monday' %}selected{% endif %}>Monday</option>
+                            <option value="Tuesday" {% if form.day.value == 'Tuesday' %}selected{% endif %}>Tuesday</option>
+                            <option value="Wednesday" {% if form.day.value == 'Wednesday' %}selected{% endif %}>Wednesday</option>
+                            <option value="Thursday" {% if form.day.value == 'Thursday' %}selected{% endif %}>Thursday</option>
+                            <option value="Friday" {% if form.day.value == 'Friday' %}selected{% endif %}>Friday</option>
+                            <option value="Saturday" {% if form.day.value == 'Saturday' %}selected{% endif %}>Saturday</option>
+                            <option value="Sunday" {% if form.day.value == 'Sunday' %}selected{% endif %}>Sunday</option>
+                        </select>
+                        {% if form.day.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.day.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Class Time <span class="required">*</span></label>
+                        <div class="time-inputs">
+                            <div>
+                                <label for="id_start_time" class="form-label">Start Time</label>
+                                <input 
+                                    type="time" 
+                                    name="start_time" 
+                                    id="id_start_time" 
+                                    class="form-input"
+                                    value="{{ form.start_time.value|default:'' }}"
+                                    required
+                                >
+                                {% if form.start_time.errors %}
+                                    <ul class="errorlist">
+                                        {% for error in form.start_time.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label for="id_end_time" class="form-label">End Time</label>
+                                <input 
+                                    type="time" 
+                                    name="end_time" 
+                                    id="id_end_time" 
+                                    class="form-input"
+                                    value="{{ form.end_time.value|default:'' }}"
+                                    required
+                                >
+                                {% if form.end_time.errors %}
+                                    <ul class="errorlist">
+                                        {% for error in form.end_time.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="form-help">Select the start and end times for your class</div>
+                    </div>
+                </div>
+
+                <!-- QR Code Section -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <svg class="section-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V4zm2 2V5h1v1h-1zM11 4a1 1 0 100-2 1 1 0 000 2zM9 7a1 1 0 100-2 1 1 0 000 2zM11 9a1 1 0 100-2 1 1 0 000 2zM9 12a1 1 0 100-2 1 1 0 000 2zM11 14a1 1 0 100-2 1 1 0 000 2zM16 11a1 1 0 100-2 1 1 0 000 2zM14 16a1 1 0 100-2 1 1 0 000 2zM16 16a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                        </svg>
+                        QR Code (Optional)
+                    </h3>
+
+                    <div class="form-group">
+                        <label for="id_qr_code" class="form-label">Upload QR Code Image</label>
+                        <input 
+                            type="file" 
+                            name="qr_code" 
+                            id="id_qr_code" 
+                            class="form-input"
+                            accept="image/*"
+                        >
+                        {% if form.qr_code.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.qr_code.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        <div class="form-help">Upload a QR code image for student attendance (optional)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_qr_code_url" class="form-label">QR Code URL</label>
+                        <input 
+                            type="url" 
+                            name="qr_code_url" 
+                            id="id_qr_code_url" 
+                            class="form-input"
+                            placeholder="https://example.com/attendance"
+                            value="{{ form.qr_code_url.value|default:'' }}"
+                        >
+                        {% if form.qr_code_url.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.qr_code_url.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        <div class="form-help">URL that the QR code should link to (optional)</div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                        </svg>
+                        Create Course
+                    </button>
+                    <a href="{% url 'lecturer:dashboard' %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-hide messages after 5 seconds
+            const messages = document.querySelectorAll('.alert');
+            messages.forEach(message => {
+                setTimeout(() => {
+                    message.style.opacity = '0';
+                    setTimeout(() => {
+                        message.remove();
+                    }, 300);
+                }, 5000);
+            });
+
+            // Form validation
+            const form = document.querySelector('form');
+            const startTimeInput = document.getElementById('id_start_time');
+            const endTimeInput = document.getElementById('id_end_time');
+
+            function validateTimes() {
+                if (startTimeInput.value && endTimeInput.value) {
+                    const startTime = new Date('2000-01-01 ' + startTimeInput.value);
+                    const endTime = new Date('2000-01-01 ' + endTimeInput.value);
+
+                    if (startTime >= endTime) {
+                        endTimeInput.setCustomValidity('End time must be after start time');
+                        return false;
+                    } else {
+                        endTimeInput.setCustomValidity('');
+                        return true;
+                    }
+                }
+                return true;
+            }
+
+            startTimeInput.addEventListener('change', validateTimes);
+            endTimeInput.addEventListener('change', validateTimes);
+
+            form.addEventListener('submit', function(e) {
+                if (!validateTimes()) {
+                    e.preventDefault();
+                    alert('Please ensure the end time is after the start time.');
+                }
+            });
+
+            // File input enhancement
+            const fileInput = document.getElementById('id_qr_code');
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        // Validate file type
+                        if (!file.type.startsWith('image/')) {
+                            alert('Please select an image file.');
+                            this.value = '';
+                            return;
+                        }
+                        
+                        // Validate file size (max 5MB)
+                        if (file.size > 5 * 1024 * 1024) {
+                            alert('File size must be less than 5MB.');
+                            this.value = '';
+                            return;
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
