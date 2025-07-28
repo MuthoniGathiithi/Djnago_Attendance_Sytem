@@ -54,22 +54,22 @@ def register(request):
         'title': 'Lecturer Registration'
     })
 
+from django.http import HttpResponse
 
-@login_required
 @login_required
 def dashboard(request):
     """Lecturer dashboard view showing their courses"""
     try:
         lecturer = Lecturer.objects.get(user=request.user)
         courses = Course.objects.filter(lecturer=lecturer)
+        return render(request, 'lecturer/dashboard.html', {
+            'courses': courses,
+            'title': 'Lecturer Dashboard'
+        })
     except Lecturer.DoesNotExist:
-        messages.error(request, 'Lecturer profile not found.')
-        courses = []
-
-    return render(request, 'lecturer/dashboard.html', {
-        'courses': courses,
-        'title': 'Lecturer Dashboard'
-    })
+        return HttpResponse("Lecturer profile not found.")
+    except Exception as e:
+        return HttpResponse(f"Error: {e}")
 
 
 @login_required
