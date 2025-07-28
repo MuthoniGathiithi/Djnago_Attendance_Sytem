@@ -58,7 +58,8 @@ def register(request):
 @login_required
 def dashboard(request):
     """Lecturer dashboard view showing their courses"""
-    courses = request.user.courses.all()
+    lecturer = request.user  # Get the lecturer instance
+    courses = lecturer.courses.all()  # Use the related name 'courses' defined in Course model
     return render(request, 'lecturer/dashboard.html', {
         'courses': courses,
         'title': 'Lecturer Dashboard'
