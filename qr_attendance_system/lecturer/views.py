@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-from django_qrcode import qrcode
+import qrcode
 from .models import Lecturer, Course, Attendance
 from .forms import LecturerRegistrationForm, CourseForm, QRCodeGenerationForm
 import json
