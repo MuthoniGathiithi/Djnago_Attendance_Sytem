@@ -56,10 +56,16 @@ def register(request):
 
 
 @login_required
+@login_required
 def dashboard(request):
     """Lecturer dashboard view showing their courses"""
-    lecturer = request.user  # Get the lecturer instance
-    courses = lecturer.courses.all()  # Use the related name 'courses' defined in Course model
+    try:
+        lecturer = Lecturer.objects.get(user=request.user)
+        courses = Course.objects.filter(lecturer=lecturer)
+    except Lecturer.DoesNotExist:
+        messages.error(request, 'Lecturer profile not found.')
+        courses = []
+
     return render(request, 'lecturer/dashboard.html', {
         'courses': courses,
         'title': 'Lecturer Dashboard'
