@@ -8,8 +8,30 @@ class Lecturer(AbstractUser):
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     department = models.CharField(max_length=100)
     
+    class Meta:
+        verbose_name = 'Lecturer'
+        verbose_name_plural = 'Lecturers'
+        
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.username})"
+
+    # Override inherited fields to set related_names
+    groups = models.ManyToManyField(
+        'auth.Group',
+        verbose_name='groups',
+        blank=True,
+        help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
+        related_name='lecturer_set',
+        related_query_name='lecturer'
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        verbose_name='user permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_name='lecturer_set',
+        related_query_name='lecturer'
+    )
 
 
 class Course(models.Model):
