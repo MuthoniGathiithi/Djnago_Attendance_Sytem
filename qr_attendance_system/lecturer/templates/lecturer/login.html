@@ -1,6 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lecturer Authentication</title>
@@ -225,7 +226,8 @@
             <div class="error-message">Invalid username or password. Please try again.</div>
         </div>
 
-        <form method="post" id="loginFormElement">
+        <form id="loginFormElement" method="post" action="{% url 'lecturer:login' %}">
+            {% csrf_token %}
             <div class="form-group">
                 <label for="username" class="form-label">Username</label>
                 <input 
@@ -276,7 +278,8 @@
             <div class="error-message">Registration failed. Please check the form for errors.</div>
         </div>
 
-        <form method="post" id="registerFormElement">
+        <form id="registerFormElement" method="post" action="{% url 'lecturer:register' %}">
+            {% csrf_token %}
             <div class="form-row">
                 <div class="form-group">
                     <label for="first_name" class="form-label">First Name</label>
@@ -321,7 +324,7 @@
                     id="email" 
                     name="email" 
                     class="form-input" 
-                    placeholder="your.email@university.edu"
+                    placeholder="your.email@university.ac.ke"
                     required
                 >
             </div>
@@ -345,7 +348,7 @@
                     id="phone_number" 
                     name="phone_number" 
                     class="form-input" 
-                    placeholder="+1234567890"
+                    placeholder="0712345678"
                 >
             </div>
 
@@ -438,5 +441,4 @@
             });
         });
     </script>
-</body>
-</html>
+{% endblock %}
