@@ -14,7 +14,7 @@ from .models import Lecturer, Course, Attendance
 from .forms import LecturerRegistrationForm, CourseForm, QRCodeGenerationForm
 import json
 import os
-
+from .models import Course
 
 def login_view(request):
     """View for lecturer login"""
@@ -57,21 +57,19 @@ def register(request):
 from django.http import HttpResponse
 
 @login_required
+@login_required
 def dashboard(request):
     """Lecturer dashboard view showing their courses"""
-    try:
-        lecturer = Lecturer.objects.get(user=request.user)
-        courses = Course.objects.filter(lecturer=lecturer)
-        return render(request, 'lecturer/dashboard.html', {
-            'courses': courses,
-            'title': 'Lecturer Dashboard'
-        })
-    except Lecturer.DoesNotExist:
-        return HttpResponse("Lecturer profile not found.")
-    except Exception as e:
-        return HttpResponse(f"Error: {e}")
+    # request.user is already a Lecturer instance
+    lecturer = request.user
+    courses = Course.objects.filter(lecturer=lecturer)
 
+    return render(request, 'lecturer/dashboard.html', {
+        'courses': courses,
+        'title': 'Lecturer Dashboard'
+    })
 
+#
 @login_required
 def add_course(request):
     """View for adding a new course"""
