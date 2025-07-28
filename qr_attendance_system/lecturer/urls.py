@@ -6,13 +6,7 @@ app_name = 'lecturer'
 
 urlpatterns = [
     # Authentication URLs
-    path('login/', 
-         LoginView.as_view(
-             template_name='lecturer/login.html',
-             redirect_authenticated_user=True
-         ),
-         name='login'
-    ),
+    path('login/', views.login_view, name='login'),
     path('register/', views.register, name='register'),
     path('logout/', views.logout_view, name='logout'),
 

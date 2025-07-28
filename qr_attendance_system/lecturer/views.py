@@ -16,13 +16,23 @@ import json
 import os
 
 
-class LecturerLoginView(LoginView):
-    template_name = 'lecturer/login.html'
-    redirect_authenticated_user = True
-    extra_context = {'title': 'Lecturer Login'}
-
-    def get_success_url(self):
-        return reverse_lazy('lecturer:dashboard')
+def login_view(request):
+    """View for lecturer login"""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)
+            messages.success(request, 'Login successful!')
+            return redirect('lecturer:dashboard')
+        else:
+            messages.error(request, 'Invalid username or password.')
+            
+    return render(request, 'lecturer/login.html', {
+        'title': 'Lecturer Login'
+    })
 
 
 def register(request):
