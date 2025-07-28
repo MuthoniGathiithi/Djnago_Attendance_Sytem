@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'form',
-    'lecture',  # Assuming you have a lecture app
+    'lecturer',  # Assuming you have a lecturer app
 
 ]
 
