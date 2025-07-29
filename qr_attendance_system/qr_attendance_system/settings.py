@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-_06ue22&l66sv0%*05*9^x(e^gxz*#^y-!s9zl2t^e2b^fu#xo
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['djnago-attendance-system.onrender.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['djnago-attendance-sytem.onrender.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
