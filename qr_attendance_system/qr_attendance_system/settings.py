@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-_06ue22&l66sv0%*05*9^x(e^gxz*#^y-!s9zl2t^e2b^fu#xo
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['djnago-attendance-system.onrender.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -126,3 +126,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Custom User Model
 AUTH_USER_MODEL = 'lecturer.Lecturer'
+
+# wsgi.py
+import os
+from django.core.wsgi import get_wsgi_application
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "qr_attendance_system.settings")  # Replace with your actual project name
+application = get_wsgi_application()
+
