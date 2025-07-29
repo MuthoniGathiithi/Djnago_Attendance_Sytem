@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: qr-attendance-system
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd qr_attendance_system && python -m gunicorn qr_attendance_system.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: DJANGO_SETTINGS_MODULE
+        value: qr_attendance_system.settings
