@@ -10,8 +10,9 @@ from django.utils import timezone
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import qrcode
-from .models import Lecturer, Course, Attendance, LoginLog
+from .models import Lecturer, Course, Attendance, LoginLog, LoginAttempt
 from .forms import LecturerRegistrationForm, CourseForm, QRCodeGenerationForm
+from .utils import send_verification_email, check_rate_limit, log_login_attempt
 import json
 import os
 from .models import Course
