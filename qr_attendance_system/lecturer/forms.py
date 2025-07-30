@@ -1,6 +1,8 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, password_validation
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 from .models import Course, Attendance, Lecturer
 
 
@@ -112,6 +114,29 @@ class QRCodeGenerationForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['qr_code'].widget.attrs.update({'class': 'form-input'})
+
+class ResendVerificationForm(forms.Form):
+    """Form for resending verification email"""
+    email = forms.EmailField(
+        max_length=254,
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Enter your email address',
+            'autofocus': True
+        }),
+        error_messages={
+            'required': 'Please enter your email address.',
+            'invalid': 'Please enter a valid email address.'
+        }
+    )
+    
+    def clean_email(self):
+        email = self.cleaned_data.get('email').lower()
+        if not email:
+            raise forms.ValidationError('Please enter your email address.')
+        return email
+
 
 class AttendanceForm(forms.ModelForm):
     """Form for student attendance submission"""

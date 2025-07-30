@@ -1,21 +1,23 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.views import LoginView
-from django.urls import reverse_lazy
-from django.http import JsonResponse
+from django.urls import reverse_lazy, reverse
+from django.http import JsonResponse, Http404, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from django.utils import timezone
+from django.utils.crypto import get_random_string
+from datetime import timedelta
 import qrcode
 from .models import Lecturer, Course, Attendance, LoginLog, LoginAttempt
-from .forms import LecturerRegistrationForm, CourseForm, QRCodeGenerationForm
-from .utils import send_verification_email, check_rate_limit, log_login_attempt
+from .forms import LecturerRegistrationForm, CourseForm, QRCodeGenerationForm, ResendVerificationForm
+from .utils import send_verification_email, check_rate_limit, log_login_attempt, is_token_valid, generate_verification_token
 import json
 import os
-from .models import Course
 
 
 def get_client_ip(request):
@@ -28,20 +30,78 @@ def get_client_ip(request):
     return ip
 
 def login_view(request):
-    """View for lecturer login"""
+    """View for lecturer login with rate limiting and account lockout"""
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
         
-        # Get client info for logging
+        # Get client info for logging and rate limiting
         ip_address = get_client_ip(request)
         user_agent = request.META.get('HTTP_USER_AGENT', '')
         
-        if user is not None:
-            login(request, user)
+        # Check rate limiting for login attempts
+        is_blocked, attempts, time_remaining = check_rate_limit(
+            f"login_ip_{ip_address}",
+            max_attempts=5,  # 5 failed attempts allowed
+            window_minutes=15  # 15 minute lockout window
+        )
+        
+        if is_blocked:
+            messages.error(
+                request,
+                f'Too many login attempts. Please try again in {time_remaining} minutes.'
+            )
+            return redirect('lecturer:login')
+        
+        # Check if username exists and account is active
+        user = None
+        try:
+            user = Lecturer.objects.get(username=username)
             
-            # Log successful login
+            # Check if account is locked due to too many failed attempts
+            if user.failed_login_attempts >= 5 and user.last_failed_login:
+                time_since_last_attempt = timezone.now() - user.last_failed_login
+                if time_since_attempt < timedelta(minutes=15):
+                    time_remaining = 15 - (time_since_attempt.seconds // 60)
+                    messages.error(
+                        request,
+                        f'Account temporarily locked due to too many failed attempts. '
+                        f'Please try again in {time_remaining} minutes or reset your password.'
+                    )
+                    return redirect('lecturer:login')
+                else:
+                    # Reset failed attempts if lockout period has passed
+                    user.failed_login_attempts = 0
+                    user.save()
+            
+            # Check if email is verified
+            if not user.email_verified:
+                messages.warning(
+                    request,
+                    'Please verify your email address before logging in. '
+                    '<a href=\"{}?email={}" class="alert-link">Resend verification email</a>'.format(
+                        reverse('lecturer:resend_verification'),
+                        user.email
+                    ),
+                    extra_tags='safe'
+                )
+                return redirect('lecturer:login')
+                
+        except Lecturer.DoesNotExist:
+            # Don't reveal if username exists or not
+            pass
+        
+        # Authenticate the user
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            # Reset failed login attempts on successful login
+            if user.failed_login_attempts > 0:
+                user.failed_login_attempts = 0
+                user.last_failed_login = None
+                user.save()
+            
+            # Log the successful login
             LoginLog.objects.create(
                 lecturer=user,
                 action='login',
@@ -49,40 +109,209 @@ def login_view(request):
                 user_agent=user_agent
             )
             
+            login(request, user)
             messages.success(request, 'Login successful!')
-            return redirect('lecturer:dashboard')
+            
+            # Redirect to next URL if provided, otherwise to dashboard
+            next_url = request.GET.get('next', reverse('lecturer:dashboard'))
+            return redirect(next_url)
+            
         else:
-            # Log failed login attempt
-            try:
-                lecturer = Lecturer.objects.get(username=username)
+            # Handle failed login attempt
+            if user is not None and isinstance(user, Lecturer):
+                # Increment failed login attempts
+                user.failed_login_attempts += 1
+                user.last_failed_login = timezone.now()
+                user.save()
+                
+                # Log the failed login attempt
                 LoginLog.objects.create(
-                    lecturer=lecturer,
+                    lecturer=user,
                     action='failed',
                     ip_address=ip_address,
                     user_agent=user_agent
                 )
-            except Lecturer.DoesNotExist:
-                pass  # Don't log if username doesn't exist
-            
-            messages.error(request, 'Invalid username or password.')
+                
+                # Check if account should be locked
+                if user.failed_login_attempts >= 5:
+                    messages.error(
+                        request,
+                        'Too many failed login attempts. Your account has been temporarily locked. '
+                        'Please try again in 15 minutes or reset your password.'
+                    )
+                else:
+                    attempts_remaining = 5 - user.failed_login_attempts
+                    messages.error(
+                        request,
+                        f'Invalid username or password. {attempts_remaining} attempts remaining.'
+                    )
+            else:
+                # Generic error message to avoid username enumeration
+                messages.error(request, 'Invalid username or password.')
             
     return render(request, 'lecturer/login.html', {
         'title': 'Lecturer Login'
     })
 
 
+def verify_email(request, token):
+    """
+    Verify user's email using the token sent to their email.
+    """
+    try:
+        # Find user with this verification token
+        user = get_object_or_404(Lecturer, verification_token=token)
+        
+        # Check if token is valid
+        if not is_token_valid(user.verification_token_created):
+            messages.error(request, 'The verification link has expired. Please request a new one.')
+            return redirect('lecturer:resend_verification')
+        
+        # Mark email as verified and activate account
+        user.email_verified = True
+        user.verification_token = None  # Clear the token after use
+        user.verification_token_created = None
+        user.is_active = True  # Activate the user
+        user.save()
+        
+        # Log the email verification
+        LoginLog.objects.create(
+            lecturer=user,
+            action='email_verified',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
+        
+        messages.success(request, 'Your email has been verified successfully! You can now log in.')
+        return redirect('lecturer:login')
+    except Http404:
+        messages.error(request, 'Invalid verification link. Please try registering again.')
+        return redirect('lecturer:register')
+    except Exception as e:
+        messages.error(request, 'An error occurred during email verification. Please try again.')
+        return redirect('lecturer:register')
+
+
+def resend_verification_email_view(request):
+    """
+    Resend verification email to the user.
+    """
+    if request.method == 'POST':
+        form = ResendVerificationForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            try:
+                user = Lecturer.objects.get(email=email)
+                
+                if user.email_verified:
+                    messages.info(request, 'Your email is already verified. You can log in.')
+                    return redirect('lecturer:login')
+                
+                # Check rate limiting for verification emails
+                ip_address = get_client_ip(request)
+                is_blocked, _, _ = check_rate_limit(
+                    f"resend_verify_{ip_address}",
+                    max_attempts=3,  # Limit to 3 resend attempts per hour
+                    window_minutes=60
+                )
+                
+                if is_blocked:
+                    messages.error(
+                        request,
+                        'Too many verification email requests. Please try again later.'
+                    )
+                    return redirect('lecturer:resend_verification')
+                
+                # Generate new token
+                user.verification_token = generate_verification_token()
+                user.verification_token_created = timezone.now()
+                user.save()
+                
+                # Resend verification email
+                if send_verification_email(request, user):
+                    messages.success(
+                        request,
+                        'Verification email has been resent. Please check your inbox.'
+                    )
+                else:
+                    messages.error(
+                        request,
+                        'Failed to send verification email. Please try again later.'
+                    )
+                
+                return redirect('lecturer:login')
+                
+            except Lecturer.DoesNotExist:
+                # Don't reveal if email exists or not for security
+                messages.success(
+                    request,
+                    'If an account exists with this email, a verification link has been sent.'
+                )
+                return redirect('lecturer:login')
+    else:
+        form = ResendVerificationForm()
+    
+    return render(request, 'lecturer/resend_verification.html', {
+        'form': form,
+        'title': 'Resend Verification Email'
+    })
+
+
 def register(request):
-    """View for lecturer registration"""
+    """View for lecturer registration with email verification"""
     if request.method == 'POST':
         form = LecturerRegistrationForm(request.POST)
         if form.is_valid():
+            # Check rate limiting for registration attempts
+            ip_address = get_client_ip(request)
+            is_blocked, attempts, time_until_reset = check_rate_limit(
+                f"register_{ip_address}",
+                max_attempts=5,  # Limit to 5 registration attempts per hour
+                window_minutes=60
+            )
+            
+            if is_blocked:
+                messages.error(
+                    request,
+                    'Too many registration attempts. Please try again later.'
+                )
+                return redirect('lecturer:register')
+            
+            # Save the user but don't log them in yet
             user = form.save(commit=False)
             user.is_staff = True  # Ensure lecturer has staff privileges
+            user.is_active = False  # User must verify email first
+            user.verification_token = generate_verification_token()
+            user.verification_token_created = timezone.now()
             user.save()
-            login(request, user)
-            messages.success(request, 'Registration successful! You are now logged in.')
-            return redirect('lecturer:dashboard')
+            
+            # Log the registration attempt
+            log_login_attempt(ip_address, user.username, successful=True)
+            
+            # Send verification email
+            if send_verification_email(request, user):
+                messages.info(
+                    request,
+                    'Registration successful! Please check your email to verify your account.'
+                )
+                return redirect('lecturer:login')
+            else:
+                # If email sending fails, still create the user but notify them
+                user.is_active = True  # Activate the account anyway
+                user.save()
+                messages.warning(
+                    request,
+                    'Registration successful, but we couldn\'t send a verification email. '
+                    'Please contact support.'
+                )
+                login(request, user)
+                return redirect('lecturer:dashboard')
         else:
+            # Log failed registration attempt
+            ip_address = get_client_ip(request)
+            username = request.POST.get('username')
+            log_login_attempt(ip_address, username, successful=False)
+            
             messages.error(request, 'Registration failed. Please check the form for errors.')
     else:
         form = LecturerRegistrationForm()
