@@ -25,6 +25,22 @@ class LecturerRegistrationForm(UserCreationForm):
                 'class': 'form-input',
                 'placeholder': field.widget.attrs.get('placeholder', '')
             })
+        
+        # Add help text for password fields
+        self.fields['password1'].help_text = 'Password must be at least 8 characters long.'
+        self.fields['password2'].help_text = 'Enter the same password as before, for verification.'
+    
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email and Lecturer.objects.filter(email=email).exists():
+            raise forms.ValidationError('A lecturer with this email address already exists.')
+        return email
+    
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if username and Lecturer.objects.filter(username=username).exists():
+            raise forms.ValidationError('A lecturer with this username already exists.')
+        return username
 
     def save(self, commit=True):
         user = super().save(commit=False)

@@ -10,11 +10,21 @@ from django.utils import timezone
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import qrcode
-from .models import Lecturer, Course, Attendance
+from .models import Lecturer, Course, Attendance, LoginLog
 from .forms import LecturerRegistrationForm, CourseForm, QRCodeGenerationForm
 import json
 import os
 from .models import Course
+
+
+def get_client_ip(request):
+    """Helper function to get client IP address"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 def login_view(request):
     """View for lecturer login"""
@@ -23,11 +33,36 @@ def login_view(request):
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         
+        # Get client info for logging
+        ip_address = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        
         if user is not None:
             login(request, user)
+            
+            # Log successful login
+            LoginLog.objects.create(
+                lecturer=user,
+                action='login',
+                ip_address=ip_address,
+                user_agent=user_agent
+            )
+            
             messages.success(request, 'Login successful!')
             return redirect('lecturer:dashboard')
         else:
+            # Log failed login attempt
+            try:
+                lecturer = Lecturer.objects.get(username=username)
+                LoginLog.objects.create(
+                    lecturer=lecturer,
+                    action='failed',
+                    ip_address=ip_address,
+                    user_agent=user_agent
+                )
+            except Lecturer.DoesNotExist:
+                pass  # Don't log if username doesn't exist
+            
             messages.error(request, 'Invalid username or password.')
             
     return render(request, 'lecturer/login.html', {
@@ -162,6 +197,15 @@ def generate_qr(request, course_id):
 @login_required
 def logout_view(request):
     """Handle user logout"""
+    # Log logout before actually logging out
+    if request.user.is_authenticated:
+        LoginLog.objects.create(
+            lecturer=request.user,
+            action='logout',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
+    
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('lecturer:login')

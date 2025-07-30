@@ -92,6 +92,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -127,10 +130,24 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom User Model
 AUTH_USER_MODEL = 'lecturer.Lecturer'
 
-# wsgi.py
-import os
-from django.core.wsgi import get_wsgi_application
+# Security Settings
+# Session Configuration
+SESSION_COOKIE_AGE = 3600  # 1 hour
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_SAVE_EVERY_REQUEST = True
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "qr_attendance_system.settings")  # Replace with your actual project name
-application = get_wsgi_application()
+# Security Headers (for production)
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+
+# Login/Logout URLs
+LOGIN_URL = '/lecturer/login/'
+LOGIN_REDIRECT_URL = '/lecturer/dashboard/'
+LOGOUT_REDIRECT_URL = '/lecturer/login/'
+
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
