@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Resend Verification Email{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Resend Verification Email</h4>
+                </div>
+                <div class="card-body">
+                    {% if email_sent %}
+                        <div class="alert alert-success">
+                            <h5><i class="fas fa-check-circle"></i> Verification Email Sent!</h5>
+                            <p class="mb-0">We've sent a new verification link to <strong>{{ email }}</strong>. Please check your inbox and follow the instructions to verify your email.</p>
+                        </div>
+                        <div class="text-center mt-4">
+                            <a href="{% url 'lecturer:login' %}" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt"></i> Back to Login
+                            </a>
+                        </div>
+                    {% else %}
+                        <p class="mb-4">Enter your email address below and we'll send you a new verification link.</p>
+                        
+                        <form method="post" class="mb-4">
+                            {% csrf_token %}
+                            
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.non_field_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <div class="form-group">
+                                <label for="{{ form.email.id_for_label }}">Email Address</label>
+                                <input type="email" 
+                                       name="{{ form.email.name }}" 
+                                       id="{{ form.email.id_for_label }}" 
+                                       class="form-control {% if form.email.errors %}is-invalid{% endif %}" 
+                                       value="{{ form.email.value|default:'' }}"
+                                       required>
+                                {% if form.email.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.email.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="form-group mt-4">
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i class="fas fa-paper-plane"></i> Send Verification Email
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="text-center">
+                            <p class="mb-0">Remembered your password? <a href="{% url 'lecturer:login' %}">Back to Login</a></p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
