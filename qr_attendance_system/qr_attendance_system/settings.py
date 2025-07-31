@@ -130,6 +130,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom User Model
 AUTH_USER_MODEL = 'lecturer.Lecturer'
 
+# Email Configuration
+# For development, use console backend to see emails in terminal
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# For production, use SMTP (uncomment and configure these)
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')  # Your email
+# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')  # App password
+# DEFAULT_FROM_EMAIL = 'Attendance System <noreply@yourdomain.com>'
+
 # Security Settings
 # Session Configuration
 SESSION_COOKIE_AGE = 3600  # 1 hour

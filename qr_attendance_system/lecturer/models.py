@@ -10,6 +10,8 @@ class Lecturer(AbstractUser):
     email_verified = models.BooleanField(default=False)
     verification_token = models.CharField(max_length=100, blank=True, null=True)
     verification_token_created = models.DateTimeField(blank=True, null=True)
+    verification_code = models.CharField(max_length=6, blank=True, null=True)
+    verification_code_created = models.DateTimeField(blank=True, null=True)
     
     class Meta:
         verbose_name = 'Lecturer'

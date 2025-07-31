@@ -1,12 +1,14 @@
 import secrets
 import string
+import random
 from datetime import timedelta
 from django.utils import timezone
 from django.core.mail import send_mail
-from django.conf import settings
-from django.urls import reverse
 from django.contrib.sites.shortcuts import get_current_site
-from .models import LoginAttempt
+from django.urls import reverse
+from django.conf import settings
+from django.core.cache import cache
+from .models import LoginLog
 
 
 def generate_verification_token():
@@ -15,12 +17,31 @@ def generate_verification_token():
     return ''.join(secrets.choice(alphabet) for _ in range(32))
 
 
+def generate_verification_code():
+    """Generate a 6-digit verification code"""
+    return ''.join([str(random.randint(0, 9)) for _ in range(6)])
+
+
+def is_verification_code_valid(code_created_time, expiry_minutes=15):
+    """Check if verification code is still valid (not expired)"""
+    if not code_created_time:
+        return False
+    
+    expiry_time = code_created_time + timedelta(minutes=expiry_minutes)
+    return timezone.now() < expiry_time
+
+
 def send_verification_email(request, lecturer):
-    """Send email verification email to lecturer"""
-    # Generate verification token
+    """Send email verification email to lecturer with verification code"""
+    # Generate verification token and code
     token = generate_verification_token()
+    verification_code = generate_verification_code()
+    
+    # Save verification details
     lecturer.verification_token = token
     lecturer.verification_token_created = timezone.now()
+    lecturer.verification_code = verification_code
+    lecturer.verification_code_created = timezone.now()
     lecturer.save()
     
     # Build verification URL
@@ -34,10 +55,12 @@ def send_verification_email(request, lecturer):
     
     Thank you for registering with the QR Attendance System!
     
-    Please click the link below to verify your email address:
+    Your verification code is: {verification_code}
+    
+    Or click the link below to verify your email address:
     {verification_url}
     
-    This link will expire in 24 hours.
+    This code will expire in 15 minutes.
     
     If you didn't create this account, please ignore this email.
     
@@ -52,6 +75,33 @@ def send_verification_email(request, lecturer):
             settings.DEFAULT_FROM_EMAIL,
             [lecturer.email],
             fail_silently=False,
+            html_message=f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>Verify Your Email</h2>
+                <p>Dear {lecturer.first_name} {lecturer.last_name},</p>
+                <p>Thank you for registering with the QR Attendance System!</p>
+                
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+                    <h3 style="margin: 0; color: #333; font-size: 24px; letter-spacing: 2px;">
+                        {verification_code}
+                    </h3>
+                    <p style="color: #666; margin: 10px 0 0;">This code will expire in 15 minutes</p>
+                </div>
+                
+                <p>Or click the button below to verify your email:</p>
+                <a href="{verification_url}" 
+                   style="display: inline-block; background: #4CAF50; color: white; 
+                          padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                    Verify Email
+                </a>
+                
+                <p style="margin-top: 30px; font-size: 12px; color: #666;">
+                    If you didn't create this account, please ignore this email.
+                </p>
+                
+                <p>Best regards,<br>QR Attendance System Team</p>
+            </div>
+            """
         )
         return True
     except Exception as e:

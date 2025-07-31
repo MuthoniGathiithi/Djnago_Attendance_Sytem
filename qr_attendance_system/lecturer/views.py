@@ -101,6 +101,15 @@ def login_view(request):
                 user.last_failed_login = None
                 user.save()
             
+            # Handle "Remember Me" functionality
+            remember_me = request.POST.get('remember_me')
+            if remember_me:
+                # Set session to expire in 30 days
+                request.session.set_expiry(30 * 24 * 60 * 60)  # 30 days in seconds
+            else:
+                # Use default session expiry (browser close)
+                request.session.set_expiry(0)
+            
             # Log the successful login
             LoginLog.objects.create(
                 lecturer=user,
