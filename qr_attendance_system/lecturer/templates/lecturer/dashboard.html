@@ -41,9 +41,101 @@
         }
 
         .header-user {
+            position: relative;
             display: flex;
             align-items: center;
             gap: 20px;
+        }
+        
+        .user-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .user-dropdown-btn {
+            background: none;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+        
+        .user-dropdown-btn:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #007bff;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .user-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 220px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        
+        .user-dropdown:hover .user-dropdown-content {
+            display: block;
+        }
+        
+        .user-dropdown-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .user-dropdown-email {
+            font-size: 14px;
+            color: #666;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .user-dropdown-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .user-dropdown-item {
+            padding: 0;
+        }
+        
+        .user-dropdown-link {
+            display: block;
+            padding: 10px 16px;
+            color: #333;
+            text-decoration: none;
+            transition: background-color 0.2s;
+            font-size: 14px;
+        }
+        
+        .user-dropdown-link:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .user-dropdown-divider {
+            height: 1px;
+            background-color: #eee;
+            margin: 4px 0;
         }
 
         .user-info {
@@ -325,14 +417,46 @@
     <header class="header">
         <div class="header-content">
             <h1 class="header-title">Lecturer Portal</h1>
-            <div class="header-user">
-                <div class="user-info">
-                    <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
-                    {% if user.department %}
-                        <div class="user-department">{{ user.department }}</div>
-                    {% endif %}
+            <div class="user-dropdown">
+                <button class="user-dropdown-btn">
+                    <div class="user-avatar">
+                        {{ user.get_full_name|default:user.username|slice:":1"|upper }}
+                    </div>
+                    <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                <div class="user-dropdown-content">
+                    <div class="user-dropdown-header">
+                        <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                        <div class="user-dropdown-email" title="{{ user.email }}">
+                            {{ user.email|truncatechars:24 }}
+                        </div>
+                    </div>
+                    <ul class="user-dropdown-menu">
+                        <li class="user-dropdown-item">
+                            <a href="{% url 'lecturer:change_email' %}" class="user-dropdown-link">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: middle;">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                                Change Email
+                            </a>
+                        </li>
+                        <li class="user-dropdown-divider"></li>
+                        <li class="user-dropdown-item">
+                            <a href="{% url 'lecturer:logout' %}" class="user-dropdown-link" style="color: #dc3545;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: middle;">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                Logout
+                            </a>
+                        </li>
+                    </ul>
                 </div>
-                <a href="{% url 'lecturer:logout' %}" class="logout-btn">Logout</a>
             </div>
         </div>
     </header>

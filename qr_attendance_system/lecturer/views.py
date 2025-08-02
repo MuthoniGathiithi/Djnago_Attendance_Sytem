@@ -527,3 +527,70 @@ def attendance_view(request, course_id):
     except Course.DoesNotExist:
         messages.error(request, 'Course not found')
         return redirect('lecturer:dashboard')
+
+@login_required
+def change_email_request(request):
+    """Handle email change requests"""
+    if request.method == 'POST':
+        form = EmailChangeForm(request.POST, user=request.user)
+        if form.is_valid():
+            # Check rate limiting
+            if not check_rate_limit(f"email_change_{request.user.id}", limit=3, period=3600):  # 3 attempts per hour
+                messages.error(request, 'Too many email change attempts. Please try again later.')
+                return redirect('lecturer:dashboard')
+                
+            # Get cleaned data
+            new_email = form.cleaned_data['new_email']
+            password = form.cleaned_data['password']
+            
+            # Verify password
+            if not request.user.check_password(password):
+                messages.error(request, 'Incorrect password. Please try again.')
+                return redirect('lecturer:change_email')
+            
+            # Initiate email change
+            success, message = request.user.initiate_email_change(new_email, request)
+            if success:
+                messages.success(request, message)
+                return redirect('lecturer:dashboard')
+            else:
+                messages.error(request, message)
+    else:
+        form = EmailChangeForm(user=request.user)
+    
+    return render(request, 'lecturer/change_email.html', {
+        'form': form,
+        'title': 'Change Email Address',
+        'pending_email': request.user.new_email if hasattr(request.user, 'new_email') else None
+    })
+
+@login_required
+def verify_email_change(request, token):
+    """Verify email change with token"""
+    if hasattr(request.user, 'email_change_token') and request.user.email_change_token == token:
+        success, message = request.user.confirm_email_change()
+        if success:
+            messages.success(request, message)
+            # Log out the user to refresh the session
+            logout(request)
+            messages.info(request, 'Please log in with your new email address.')
+            return redirect('lecturer:login')
+        else:
+            messages.error(request, message)
+    else:
+        messages.error(request, 'Invalid or expired verification link.')
+    
+    return redirect('lecturer:dashboard')
+
+@login_required
+def cancel_email_change(request):
+    """Cancel a pending email change request"""
+    if request.method == 'POST':
+        if hasattr(request.user, 'new_email'):
+            request.user.new_email = None
+            request.user.email_change_token = None
+            request.user.email_change_token_created = None
+            request.user.save()
+            messages.success(request, 'Email change request has been cancelled.')
+    
+    return redirect('lecturer:dashboard')

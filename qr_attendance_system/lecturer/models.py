@@ -27,75 +27,84 @@ class Lecturer(AbstractUser):
         
     def initiate_email_change(self, new_email, request=None):
         """
-        Initiate an email change request.
-        Returns (success: bool, error_message: str)
+        Initiate the email change process by generating a token and setting the new email.
+        Also generates a 6-digit verification code as a fallback.
+        Returns (success, message) tuple.
         """
-        from django.utils import timezone
-        from .utils import generate_verification_token
+        # Check if the new email is already in use by another account
+        if Lecturer.objects.filter(email=new_email).exclude(pk=self.pk).exists():
+            return False, 'This email is already in use by another account.'
+            
+        self.new_email = new_email
+        self.email_change_token = self._generate_verification_token()
+        self.email_change_token_created = timezone.now()
         
-        try:
-            # Check if the new email is already in use
-            if Lecturer.objects.filter(email=new_email).exclude(pk=self.pk).exists():
-                return False, 'This email is already in use by another account.'
-                
-            # Set new email and generate verification token
-            self.new_email = new_email
-            self.email_change_token = generate_verification_token()
-            self.email_change_token_created = timezone.now()
-            self.save()
-            
-            # Send verification email to the new email address
-            if request:
-                from .utils import send_email_change_verification
-                success, error_msg = send_email_change_verification(request, self)
-                if not success:
-                    return False, f'Failed to send verification email: {error_msg}'
-                    
-            return True, 'Verification email has been sent to your new email address.'
-            
-        except Exception as e:
-            return False, f'An error occurred: {str(e)}'
+        # Generate a 6-digit verification code
+        import random
+        self.email_verification_code = str(random.randint(100000, 999999))
+        self.email_verification_code_created = timezone.now()
+        
+        self.save()
+        
+        if request:
+            from .utils import send_email_change_verification
+            success, error_msg = send_email_change_verification(request, self)
+            if not success:
+                return False, f'Failed to send verification email: {error_msg}'
+        
+        return True, 'Email change initiated successfully.'
     
-    def confirm_email_change(self, token):
+    def confirm_email_change(self, verification_code=None):
         """
-        Confirm and complete the email change using the verification token.
-        Returns (success: bool, error_message: str)
+        Confirm and complete the email change process.
+        Can be verified using either the token (from email link) or verification code.
+        Returns (success, message) tuple.
         """
-        from django.utils import timezone
-        from datetime import timedelta
-        
-        try:
-            # Check if there's a pending email change
-            if not self.new_email or not self.email_change_token:
-                return False, 'No pending email change request found.'
+        if not self.new_email or (not self.email_change_token and not verification_code):
+            return False, 'No pending email change to confirm.'
             
-            # Verify the token
-            if self.email_change_token != token:
-                return False, 'Invalid verification token.'
+        # If using verification code
+        if verification_code:
+            if not self.email_verification_code or self.email_verification_code != verification_code:
+                return False, 'Invalid verification code.'
                 
-            # Check if token is expired (15 minutes)
-            if (timezone.now() - self.email_change_token_created) > timedelta(minutes=15):
-                self.email_change_token = None
-                self.email_change_token_created = None
-                self.save()
-                return False, 'The verification link has expired. Please request a new email change.'
-            
-            # Update email and clear change fields
-            old_email = self.email
-            self.email = self.new_email
-            self.email_verified = True
-            self.new_email = None
-            self.email_change_token = None
-            self.email_change_token_created = None
-            self.save()
-            
-            # Send notification to old email (optional)
-            # send_email_change_notification(self, old_email)
-            
-            return True, 'Your email address has been updated successfully.'
-            
-        except Exception as e:
-            return False, f'An error occurred: {str(e)}'
+            # Check if code is expired (15 minutes)
+            code_age = timezone.now() - self.email_verification_code_created
+            if code_age > timezone.timedelta(minutes=15):
+                self._clear_email_change_data()
+                return False, 'The verification code has expired. Please request a new one.'
+        else:
+            # Using token (from email link)
+            if not self.email_change_token:
+                return False, 'Invalid verification link.'
+                
+            # Verify the token is still valid (15 minutes expiration)
+            token_age = timezone.now() - self.email_change_token_created
+            if token_age > timezone.timedelta(minutes=15):
+                self._clear_email_change_data()
+                return False, 'The email change link has expired. Please request a new one.'
+        
+        # Update the email
+        old_email = self.email
+        self.email = self.new_email
+        
+        # Clear all verification data
+        self._clear_email_change_data()
+        
+        return True, f'Email successfully changed from {old_email} to {self.email}.'
+        
+    def _clear_email_change_data(self):
+        """Helper method to clear all email change related fields"""
+        self.new_email = None
+        self.email_change_token = None
+        self.email_change_token_created = None
+        self.email_verification_code = None
+        self.email_verification_code_created = None
+        self.save()
+        
+    def _generate_verification_token(self):
+        # This method should be implemented to generate a verification token
+        pass
 
     # Override inherited fields to set related_names
     groups = models.ManyToManyField(
