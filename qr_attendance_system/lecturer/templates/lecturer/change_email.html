@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Change Email - Lecturer Portal{% endblock %}
+
+{% block content %}
+<style>
+.auth-container {
+    max-width: 500px;
+    margin: 50px auto;
+    padding: 40px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.auth-header { text-align: center; margin-bottom: 30px; }
+.auth-title { font-size: 28px; margin-bottom: 8px; }
+.auth-subtitle { color: #666; margin-bottom: 20px; }
+.form-group { margin-bottom: 20px; }
+.form-label { display: block; margin-bottom: 5px; font-weight: 500; }
+.form-input { 
+    width: 100%; 
+    padding: 12px; 
+    border: 2px solid #ddd; 
+    border-radius: 6px; 
+    font-size: 16px;
+}
+.form-input:focus { border-color: #007bff; outline: none; }
+.btn-primary { 
+    width: 100%; 
+    padding: 12px; 
+    background: #007bff; 
+    color: white; 
+    border: none; 
+    border-radius: 6px; 
+    font-size: 16px; 
+    cursor: pointer;
+    margin-top: 10px;
+}
+.btn-primary:hover { background: #0056b3; }
+.btn-secondary {
+    width: 100%;
+    padding: 12px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+}
+.btn-secondary:hover { background: #5a6268; }
+.alert { padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+.alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+.error-message { color: #dc3545; font-size: 14px; margin-top: 5px; }
+.current-email {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-weight: 500;
+    text-align: center;
+}
+.pending-change {
+    background: #fff3cd;
+    color: #856404;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+</style>
+
+<div class="auth-container">
+    <div class="auth-header">
+        <h1 class="auth-title">Change Email Address</h1>
+        <p class="auth-subtitle">Update your account's email address</p>
+    </div>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="current-email">
+        Current Email: <strong>{{ user.email }}</strong>
+    </div>
+
+    {% if user.new_email %}
+    <div class="pending-change">
+        <p>Pending email change to: <strong>{{ user.new_email }}</strong></p>
+        <p>Please check your new email for a verification link. The link will expire in 15 minutes.</p>
+        <form method="post" action="{% url 'lecturer:cancel_email_change' %}" style="margin-top: 10px;">
+            {% csrf_token %}
+            <button type="submit" class="btn-secondary">Cancel Email Change</button>
+        </form>
+    </div>
+    {% else %}
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="{{ form.password.id_for_label }}" class="form-label">Current Password</label>
+            <input type="password" 
+                   id="{{ form.password.id_for_label }}" 
+                   name="{{ form.password.name }}" 
+                   class="form-input" 
+                   placeholder="Enter your current password"
+                   required>
+            {% if form.password.errors %}
+                <div class="error-message">{{ form.password.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.new_email.id_for_label }}" class="form-label">New Email Address</label>
+            <input type="email" 
+                   id="{{ form.new_email.id_for_label }}" 
+                   name="{{ form.new_email.name }}" 
+                   class="form-input" 
+                   placeholder="Enter your new email address"
+                   required>
+            {% if form.new_email.errors %}
+                <div class="error-message">{{ form.new_email.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn-primary">Change Email</button>
+        <a href="{% url 'lecturer:dashboard' %}" class="btn-secondary" style="text-align: center; text-decoration: none;">Back to Dashboard</a>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

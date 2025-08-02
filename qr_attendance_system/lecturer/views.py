@@ -14,8 +14,16 @@ from django.utils.crypto import get_random_string
 from datetime import timedelta
 import qrcode
 from .models import Lecturer, Course, Attendance, LoginLog, LoginAttempt
-from .forms import LecturerRegistrationForm, CourseForm, QRCodeGenerationForm, ResendVerificationForm
-from .utils import send_verification_email, check_rate_limit, log_login_attempt, is_token_valid, generate_verification_token
+from .forms import LecturerRegistrationForm, CourseForm, QRCodeGenerationForm, ResendVerificationForm, EmailChangeForm
+from .utils import (
+    send_verification_email, 
+    check_rate_limit, 
+    log_login_attempt, 
+    is_token_valid, 
+    generate_verification_token,
+    send_email_change_verification
+)
+from django.conf import settings
 import json
 import os
 

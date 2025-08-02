@@ -13,6 +13,11 @@ urlpatterns = [
     # Email Verification URLs
     path('verify-email/<str:token>/', views.verify_email, name='verify_email'),
     path('resend-verification/', views.resend_verification_email_view, name='resend_verification'),
+    
+    # Email Change URLs
+    path('change-email/', views.change_email_request, name='change_email'),
+    path('verify-email-change/<str:token>/', views.verify_email_change, name='verify_email_change'),
+    path('cancel-email-change/', views.cancel_email_change, name='cancel_email_change'),
 
     # Dashboard and Course Management URLs
     path('', views.dashboard, name='dashboard'),
