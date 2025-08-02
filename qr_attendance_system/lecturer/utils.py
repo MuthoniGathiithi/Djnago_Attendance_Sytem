@@ -8,7 +8,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from django.conf import settings
 from django.core.cache import cache
-from .models import LoginLog
+from .models import LoginLog, LoginAttempt
 
 
 def generate_verification_token():
