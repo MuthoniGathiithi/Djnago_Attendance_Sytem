@@ -12,6 +12,7 @@ urlpatterns = [
     
     # Email Verification URLs
     path('verify-email/<str:token>/', views.verify_email, name='verify_email'),
+    path('verify-email-code/', views.verify_email_code, name='verify_email_code'),
     path('resend-verification/', views.resend_verification_email_view, name='resend_verification'),
     
     # Email Change URLs

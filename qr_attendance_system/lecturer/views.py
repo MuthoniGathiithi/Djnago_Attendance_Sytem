@@ -316,6 +316,52 @@ def resend_verification_email_view(request):
     })
 
 
+def verify_email_code(request):
+    """View for verifying email with 6-digit code"""
+    if 'verification_user_id' not in request.session:
+        messages.error(request, 'No verification in progress. Please register again.')
+        return redirect('lecturer:register')
+    
+    user_id = request.session['verification_user_id']
+    user_email = request.session.get('verification_email', '')
+    
+    try:
+        user = Lecturer.objects.get(id=user_id, email=user_email, is_active=False)
+    except Lecturer.DoesNotExist:
+        messages.error(request, 'Invalid verification session. Please register again.')
+        return redirect('lecturer:register')
+    
+    if request.method == 'POST':
+        entered_code = request.POST.get('verification_code', '').strip()
+        
+        # Check if code matches and is not expired (15 minutes)
+        if (user.verification_code == entered_code and 
+            timezone.now() - user.verification_code_created < timedelta(minutes=15)):
+            
+            # Mark email as verified and activate account
+            user.is_active = True
+            user.email_verified = True
+            user.verification_code = None
+            user.verification_code_created = None
+            user.save()
+            
+            # Clear session data
+            if 'verification_user_id' in request.session:
+                del request.session['verification_user_id']
+            if 'verification_email' in request.session:
+                del request.session['verification_email']
+            
+            messages.success(request, 'Email verified successfully! You can now log in.')
+            return redirect('lecturer:login')
+        else:
+            messages.error(request, 'Invalid or expired verification code. Please try again.')
+    
+    return render(request, 'lecturer/verify_email_code.html', {
+        'email': user_email,
+        'title': 'Verify Email'
+    })
+
+
 def register(request):
     """View for lecturer registration with email verification"""
     if request.method == 'POST':
@@ -340,33 +386,28 @@ def register(request):
             user = form.save(commit=False)
             user.is_staff = True  # Ensure lecturer has staff privileges
             user.is_active = False  # User must verify email first
-            user.verification_token = generate_verification_token()
-            user.verification_token_created = timezone.now()
+            
+            # Generate and save verification code
+            import random
+            verification_code = str(random.randint(100000, 999999))
+            user.verification_code = verification_code
+            user.verification_code_created = timezone.now()
             user.save()
             
-            # Log the registration attempt
-            log_login_attempt(ip_address, user.username, successful=True)
+            # Send email with verification code
+            success, error_msg = send_verification_email(request, user)
             
-            # Send verification email
-            email_sent, error_message = send_verification_email(request, user)
-            if email_sent:
-                messages.info(
-                    request,
-                    'Registration successful! Please check your email to verify your account. '
-                    'The verification link will expire in 15 minutes.'
-                )
-                return redirect('lecturer:login')
+            if success:
+                # Store user ID in session for verification
+                request.session['verification_user_id'] = user.id
+                request.session['verification_email'] = user.email
+                messages.info(request, 'A 6-digit verification code has been sent to your email.')
+                return redirect('lecturer:verify_email_code')
             else:
-                # If email sending fails, still create the user but notify them
-                user.is_active = True  # Activate the account anyway
-                user.save()
-                messages.warning(
-                    request,
-                    'Registration successful, but we couldn\'t send a verification email. '
-                    f'Error: {error_message}. Please contact support.'
-                )
-                login(request, user)
-                return redirect('lecturer:dashboard')
+                # If email fails, delete the user and show error
+                user.delete()
+                messages.error(request, f'Failed to send verification code: {error_msg}')
+                return redirect('lecturer:register')
         else:
             # Log failed registration attempt
             ip_address = get_client_ip(request)

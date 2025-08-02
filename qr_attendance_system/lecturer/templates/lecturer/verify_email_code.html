@@ -1,0 +1,97 @@
+{% extends 'lecturer/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - QR Attendance System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <h4 class="mb-0">Verify Your Email</h4>
+                </div>
+                <div class="card-body p-4">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="text-center mb-4">
+                        <i class="fas fa-envelope-open-text fa-4x text-primary mb-3"></i>
+                        <h5>Enter Verification Code</h5>
+                        <p class="text-muted">We've sent a 6-digit verification code to <strong>{{ email }}</strong>.</p>
+                        <p class="text-muted small">Please check your inbox and enter the code below. The code will expire in 15 minutes.</p>
+                    </div>
+
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <div class="verification-code-inputs d-flex justify-content-center gap-2">
+                                <input type="text" name="verification_code" 
+                                       class="form-control form-control-lg text-center verification-input" 
+                                       maxlength="6" 
+                                       pattern="\d{6}" 
+                                       placeholder="123456"
+                                       required
+                                       style="font-size: 1.5rem; letter-spacing: 0.5rem;">
+                            </div>
+                            <div class="invalid-feedback text-center">
+                                Please enter the 6-digit verification code.
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check-circle me-2"></i>Verify Email
+                            </button>
+                            <a href="{% url 'lecturer:resend_verification' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-redo me-2"></i>Resend Code
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.verification-input {
+    max-width: 250px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.verification-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+</style>
+
+<script>
+// Auto-format the verification code input
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.querySelector('.verification-input');
+    
+    // Only allow numbers
+    input.addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+    });
+    
+    // Auto-submit when 6 digits are entered
+    input.addEventListener('keyup', function(e) {
+        if (this.value.length === 6) {
+            this.form.submit();
+        }
+    });
+    
+    // Focus the input on page load
+    input.focus();
+});
+</script>
+{% endblock %}
