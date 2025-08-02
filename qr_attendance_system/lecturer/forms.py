@@ -1,8 +1,9 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, SetPasswordForm, PasswordChangeForm
 from django.contrib.auth import get_user_model, password_validation
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from django.conf import settings
 from .models import Course, Attendance, Lecturer
 
 
@@ -133,9 +134,86 @@ class ResendVerificationForm(forms.Form):
     
     def clean_email(self):
         email = self.cleaned_data.get('email').lower()
-        if not email:
-            raise forms.ValidationError('Please enter your email address.')
+        try:
+            user = Lecturer.objects.get(email=email)
+            if user.email_verified:
+                raise forms.ValidationError('This email is already verified.')
+        except Lecturer.DoesNotExist:
+            # Don't reveal if email exists or not for security
+            pass
         return email
+
+
+class EmailChangeForm(forms.Form):
+    """Form for changing user's email address"""
+    current_password = forms.CharField(
+        label=_("Current password"),
+        strip=False,
+        widget=forms.PasswordInput(attrs={
+            'autocomplete': 'current-password',
+            'class': 'form-input',
+            'placeholder': 'Enter your current password'
+        }),
+    )
+    
+    new_email = forms.EmailField(
+        label=_("New email address"),
+        max_length=254,
+        widget=forms.EmailInput(attrs={
+            'autocomplete': 'email',
+            'class': 'form-input',
+            'placeholder': 'Enter your new email address'
+        }),
+    )
+    
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+    
+    def clean_current_password(self):
+        """
+        Validate that the current_password field is correct.
+        """
+        current_password = self.cleaned_data.get("current_password")
+        if not self.user.check_password(current_password):
+            raise forms.ValidationError(
+                _("Your current password was entered incorrectly. Please enter it again."),
+                code='password_incorrect',
+            )
+        return current_password
+    
+    def clean_new_email(self):
+        """
+        Validate that the new email is not already in use.
+        """
+        new_email = self.cleaned_data.get('new_email')
+        
+        # Check if the new email is the same as the current one
+        if new_email.lower() == self.user.email.lower():
+            raise forms.ValidationError(
+                _("This is already your current email address.")
+            )
+        
+        # Check if the new email is already in use by another account
+        if Lecturer.objects.filter(email__iexact=new_email).exclude(pk=self.user.pk).exists():
+            raise forms.ValidationError(
+                _("This email is already in use by another account.")
+            )
+            
+        return new_email.lower()
+    
+    def save(self, commit=True):
+        """
+        Initiate the email change process.
+        Returns (success: bool, message: str)
+        """
+        try:
+            new_email = self.cleaned_data['new_email']
+            return self.user.initiate_email_change(new_email, self.request)
+        except Exception as e:
+            if settings.DEBUG:
+                return False, str(e)
+            return False, _("An error occurred while processing your request. Please try again later.")
 
 
 class AttendanceForm(forms.ModelForm):

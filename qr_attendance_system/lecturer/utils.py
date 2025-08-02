@@ -31,82 +31,85 @@ def is_verification_code_valid(code_created_time, expiry_minutes=15):
     return timezone.now() < expiry_time
 
 
+from django.template.loader import render_to_string
+from django.core.mail import EmailMultiAlternatives
+
 def send_verification_email(request, lecturer):
-    """Send email verification email to lecturer with verification code"""
-    # Generate verification token and code
-    token = generate_verification_token()
-    verification_code = generate_verification_code()
-    
-    # Save verification details
-    lecturer.verification_token = token
-    lecturer.verification_token_created = timezone.now()
-    lecturer.verification_code = verification_code
-    lecturer.verification_code_created = timezone.now()
-    lecturer.save()
-    
-    # Build verification URL
-    current_site = get_current_site(request)
-    verification_url = f"http://{current_site.domain}{reverse('lecturer:verify_email', kwargs={'token': token})}"
-    
-    # Email content
-    subject = 'Verify Your Email - QR Attendance System'
-    message = f"""
-    Dear {lecturer.first_name} {lecturer.last_name},
-    
-    Thank you for registering with the QR Attendance System!
-    
-    Your verification code is: {verification_code}
-    
-    Or click the link below to verify your email address:
-    {verification_url}
-    
-    This code will expire in 15 minutes.
-    
-    If you didn't create this account, please ignore this email.
-    
-    Best regards,
-    QR Attendance System Team
     """
-    
+    Send email verification email to lecturer with verification code.
+    Returns (success: bool, error_message: str)
+    """
     try:
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [lecturer.email],
-            fail_silently=False,
-            html_message=f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Verify Your Email</h2>
-                <p>Dear {lecturer.first_name} {lecturer.last_name},</p>
-                <p>Thank you for registering with the QR Attendance System!</p>
-                
-                <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-                    <h3 style="margin: 0; color: #333; font-size: 24px; letter-spacing: 2px;">
-                        {verification_code}
-                    </h3>
-                    <p style="color: #666; margin: 10px 0 0;">This code will expire in 15 minutes</p>
-                </div>
-                
-                <p>Or click the button below to verify your email:</p>
-                <a href="{verification_url}" 
-                   style="display: inline-block; background: #4CAF50; color: white; 
-                          padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                    Verify Email
-                </a>
-                
-                <p style="margin-top: 30px; font-size: 12px; color: #666;">
-                    If you didn't create this account, please ignore this email.
-                </p>
-                
-                <p>Best regards,<br>QR Attendance System Team</p>
-            </div>
-            """
+        # Generate verification token and code
+        token = generate_verification_token()
+        verification_code = generate_verification_code()
+        
+        # Save verification details
+        lecturer.verification_token = token
+        lecturer.verification_token_created = timezone.now()
+        lecturer.verification_code = verification_code
+        lecturer.verification_code_created = timezone.now()
+        lecturer.save()
+        
+        # Build verification URL
+        current_site = get_current_site(request)
+        verification_url = f"https://{current_site.domain}{reverse('lecturer:verify_email', kwargs={'token': token})}"
+        
+        # Prepare email context
+        context = {
+            'lecturer': lecturer,
+            'verification_code': verification_code,
+            'verification_url': verification_url,
+            'current_site': current_site,
+        }
+        
+        # Render email content
+        subject = 'Verify Your Email - QR Attendance System'
+        text_content = f"""
+        Dear {lecturer.first_name} {lecturer.last_name},
+        
+        Thank you for registering with the QR Attendance System!
+        
+        Your verification code is: {verification_code}
+        
+        Or visit this link to verify your email address:
+        {verification_url}
+        
+        This code will expire in 15 minutes.
+        
+        If you didn't create this account, please ignore this email.
+        
+        Best regards,
+        QR Attendance System Team
+        """
+        
+        # Render HTML content from template
+        html_content = render_to_string('lecturer/emails/verification_email.html', context)
+        
+        # Create email message
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[lecturer.email],
+            reply_to=[settings.DEFAULT_FROM_EMAIL],
         )
-        return True
+        email.attach_alternative(html_content, "text/html")
+        
+        # Send email with timeout
+        email.send(fail_silently=False)
+        
+        # Log successful email sending
+        if settings.DEBUG:
+            print(f"Verification email sent to {lecturer.email}")
+            
+        return True, None
+        
     except Exception as e:
-        print(f"Failed to send verification email: {e}")
-        return False
+        error_msg = f"Failed to send verification email: {str(e)}"
+        if settings.DEBUG:
+            print(error_msg)
+        return False, error_msg
 
 
 def is_token_valid(lecturer):
@@ -172,5 +175,62 @@ def log_login_attempt(ip_address, username=None, successful=False):
 def cleanup_old_login_attempts(days=7):
     """Clean up old login attempts (run this periodically)"""
     cutoff_date = timezone.now() - timedelta(days=days)
-    deleted_count = LoginAttempt.objects.filter(timestamp__lt=cutoff_date).delete()[0]
-    return deleted_count
+    return LoginAttempt.objects.filter(timestamp__lt=cutoff_date).delete()
+
+
+def send_email_change_verification(request, lecturer):
+    """
+    Send email change verification email to the new email address.
+    Returns (success: bool, error_message: str)
+    """
+    try:
+        if not lecturer.new_email or not lecturer.email_change_token:
+            return False, 'No pending email change found.'
+        
+        current_site = get_current_site(request)
+        verification_url = request.build_absolute_uri(
+            reverse('lecturer:confirm_email_change', 
+                   kwargs={'token': lecturer.email_change_token})
+        )
+        
+        # Prepare email context
+        context = {
+            'user': lecturer,
+            'verification_url': verification_url,
+            'site_name': current_site.name,
+            'expiry_hours': '24',  # Matches the token expiration in the model
+        }
+        
+        # Render email content
+        subject = 'Confirm Your New Email Address'
+        text_content = render_to_string(
+            'lecturer/emails/email_change_verification.txt',
+            context
+        )
+        html_content = render_to_string(
+            'lecturer/emails/email_change_verification.html',
+            context
+        )
+        
+        # Send email
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[lecturer.new_email],
+            reply_to=[settings.DEFAULT_FROM_EMAIL]
+        )
+        email.attach_alternative(html_content, "text/html")
+        email.send(fail_silently=False)
+        
+        # Send notification to old email (optional)
+        # send_email_change_notification(lecturer, lecturer.email)
+        
+        return True, ''
+        
+    except Exception as e:
+        if settings.DEBUG:
+            error_msg = str(e)
+        else:
+            error_msg = 'Failed to send verification email.'
+        return False, error_msg[0]

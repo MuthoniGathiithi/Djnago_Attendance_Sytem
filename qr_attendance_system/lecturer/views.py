@@ -166,15 +166,32 @@ def login_view(request):
 def verify_email(request, token):
     """
     Verify user's email using the token sent to their email.
+    Handles various verification scenarios with appropriate user feedback.
     """
     try:
         # Find user with this verification token
         user = get_object_or_404(Lecturer, verification_token=token)
         
+        # Check if email is already verified
+        if user.email_verified:
+            messages.info(
+                request,
+                'This email address has already been verified. You can log in with your credentials.'
+            )
+            return redirect('lecturer:login')
+        
         # Check if token is valid
         if not is_token_valid(user.verification_token_created):
-            messages.error(request, 'The verification link has expired. Please request a new one.')
-            return redirect('lecturer:resend_verification')
+            messages.warning(
+                request,
+                'This verification link has expired. We\'ve sent a new verification email to your address.'
+            )
+            # Generate and send a new token
+            user.verification_token = generate_verification_token()
+            user.verification_token_created = timezone.now()
+            user.save()
+            send_verification_email(request, user)  # Send new verification email
+            return redirect('lecturer:login')
         
         # Mark email as verified and activate account
         user.email_verified = True
@@ -191,14 +208,37 @@ def verify_email(request, token):
             user_agent=request.META.get('HTTP_USER_AGENT', '')
         )
         
-        messages.success(request, 'Your email has been verified successfully! You can now log in.')
+        # Send welcome email (optional)
+        # send_welcome_email(request, user)
+        
+        messages.success(
+            request,
+            '🎉 Your email has been verified successfully! You can now log in to your account.'
+        )
         return redirect('lecturer:login')
+        
     except Http404:
-        messages.error(request, 'Invalid verification link. Please try registering again.')
+        messages.error(
+            request,
+            '❌ Invalid verification link. This could be because: \n'
+            '1. The link was copied incorrectly \n'
+            '2. The verification link has already been used \n'
+            '3. The account no longer exists\n\n'
+            'Please try registering again or contact support if the issue persists.'
+        )
         return redirect('lecturer:register')
+        
     except Exception as e:
-        messages.error(request, 'An error occurred during email verification. Please try again.')
-        return redirect('lecturer:register')
+        if settings.DEBUG:
+            error_msg = str(e)
+        else:
+            error_msg = 'An unexpected error occurred during email verification.'
+            
+        messages.error(
+            request,
+            f'❌ {error_msg} Please try again or contact support if the issue persists.'
+        )
+        return redirect('lecturer:login')
 
 
 def resend_verification_email_view(request):
@@ -237,15 +277,17 @@ def resend_verification_email_view(request):
                 user.save()
                 
                 # Resend verification email
-                if send_verification_email(request, user):
+                email_sent, error_message = send_verification_email(request, user)
+                if email_sent:
                     messages.success(
                         request,
-                        'Verification email has been resent. Please check your inbox.'
+                        'Verification email has been resent. Please check your inbox. '
+                        'The link will expire in 15 minutes.'
                     )
                 else:
                     messages.error(
                         request,
-                        'Failed to send verification email. Please try again later.'
+                        f'Failed to send verification email. Error: {error_message}. Please try again later.'
                     )
                 
                 return redirect('lecturer:login')
@@ -298,10 +340,12 @@ def register(request):
             log_login_attempt(ip_address, user.username, successful=True)
             
             # Send verification email
-            if send_verification_email(request, user):
+            email_sent, error_message = send_verification_email(request, user)
+            if email_sent:
                 messages.info(
                     request,
-                    'Registration successful! Please check your email to verify your account.'
+                    'Registration successful! Please check your email to verify your account. '
+                    'The verification link will expire in 15 minutes.'
                 )
                 return redirect('lecturer:login')
             else:
@@ -311,7 +355,7 @@ def register(request):
                 messages.warning(
                     request,
                     'Registration successful, but we couldn\'t send a verification email. '
-                    'Please contact support.'
+                    f'Error: {error_message}. Please contact support.'
                 )
                 login(request, user)
                 return redirect('lecturer:dashboard')
