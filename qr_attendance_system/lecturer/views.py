@@ -40,7 +40,7 @@ def get_client_ip(request):
 def login_view(request):
     """View for lecturer login with rate limiting and account lockout"""
     if request.method == 'POST':
-        username = request.POST.get('username')
+        email = request.POST.get('email')  # Changed from username to email
         password = request.POST.get('password')
         
         # Get client info for logging and rate limiting
@@ -61,46 +61,66 @@ def login_view(request):
             )
             return redirect('lecturer:login')
         
-        # Check if username exists and account is active
+        # Check if email exists and account is active
         user = None
         try:
-            user = Lecturer.objects.get(username=username)
+            # Handle multiple users with same email - get the most recent active one
+            users_with_email = Lecturer.objects.filter(email=email).order_by('-date_joined')
+            if users_with_email.exists():
+                user = users_with_email.first()  # Get the most recent user with this email
             
-            # Check if account is locked due to too many failed attempts
-            if user.failed_login_attempts >= 5 and user.last_failed_login:
-                time_since_last_attempt = timezone.now() - user.last_failed_login
-                if time_since_attempt < timedelta(minutes=15):
-                    time_remaining = 15 - (time_since_attempt.seconds // 60)
-                    messages.error(
-                        request,
-                        f'Account temporarily locked due to too many failed attempts. '
-                        f'Please try again in {time_remaining} minutes or reset your password.'
-                    )
-                    return redirect('lecturer:login')
-                else:
-                    # Reset failed attempts if lockout period has passed
+            # Initialize missing fields if they don't exist (only if user is not None)
+            if user is not None:
+                if not hasattr(user, 'failed_login_attempts'):
                     user.failed_login_attempts = 0
-                    user.save()
+                if not hasattr(user, 'last_failed_login'):
+                    user.last_failed_login = None
+                if not hasattr(user, 'account_locked_until'):
+                    user.account_locked_until = None
             
-            # Check if email is verified
-            if not user.email_verified:
+            # Check if account is locked due to too many failed attempts (only if user exists)
+            if user and user.account_locked_until and user.account_locked_until > timezone.now():
+                time_remaining = (user.account_locked_until - timezone.now()).seconds // 60
+                messages.error(
+                    request,
+                    'Your account is temporarily locked. Please try again in {} minutes.'.format(
+                        time_remaining
+                    )
+                )
+                return redirect('lecturer:login')
+            
+            # Check if email is verified (only if user exists)
+            if user and not user.email_verified:
                 messages.warning(
                     request,
-                    'Please verify your email address before logging in. '
-                    '<a href=\"{}?email={}" class="alert-link">Resend verification email</a>'.format(
+                    'Please verify your email address before logging in. We have sent a 6-digit verification code to your email. '\
+                    'Please check your inbox and enter the code to verify your account. '\
+                    '<a href=\"{}?email={}\" class="alert-link">Resend verification code</a>'.format(
                         reverse('lecturer:resend_verification'),
                         user.email
                     ),
                     extra_tags='safe'
                 )
-                return redirect('lecturer:login')
+                # Redirect to verification page with a clear message
+                return redirect('lecturer:verify_email_code')
                 
         except Lecturer.DoesNotExist:
-            # Don't reveal if username exists or not
+            # Don't reveal if email exists or not
             pass
         
-        # Authenticate the user
-        user = authenticate(request, username=username, password=password)
+        # Authenticate the user using email (find username first)
+        auth_user = None
+        if user:  # If we found a user with this email
+            auth_user = authenticate(request, username=user.username, password=password)
+        else:
+            # Try to find any user by email for authentication
+            users_with_email = Lecturer.objects.filter(email=email)
+            for potential_user in users_with_email:
+                auth_user = authenticate(request, username=potential_user.username, password=password)
+                if auth_user:  # If authentication succeeds, use this user
+                    break
+        
+        user = auth_user  # Use the authenticated user
         
         if user is not None:
             # Reset failed login attempts on successful login
@@ -135,33 +155,50 @@ def login_view(request):
             
         else:
             # Handle failed login attempt
-            if user is not None and isinstance(user, Lecturer):
+            # Try to find user by email for failed attempt tracking
+            failed_user = None
+            if email:
+                try:
+                    users_with_email = Lecturer.objects.filter(email=email)
+                    if users_with_email.exists():
+                        failed_user = users_with_email.first()
+                except:
+                    pass
+            
+            if failed_user:
                 # Increment failed login attempts
-                user.failed_login_attempts += 1
-                user.last_failed_login = timezone.now()
-                user.save()
+                failed_user.failed_login_attempts += 1
+                failed_user.last_failed_login = timezone.now()
+                failed_user.save()
                 
                 # Log the failed login attempt
                 LoginLog.objects.create(
-                    lecturer=user,
+                    lecturer=failed_user,
                     action='failed',
                     ip_address=ip_address,
                     user_agent=user_agent
                 )
                 
+                # Calculate remaining attempts
+                remaining_attempts = 5 - failed_user.failed_login_attempts
+                
+                if remaining_attempts > 0:
+                    messages.error(
+                        request,
+                        f'Invalid email or password. You have {remaining_attempts} attempt{"s" if remaining_attempts != 1 else ""} remaining before your account is locked.'
+                    )
+                
                 # Check if account should be locked
-                if user.failed_login_attempts >= 5:
+                if failed_user.failed_login_attempts >= 5:
                     messages.error(
                         request,
                         'Too many failed login attempts. Your account has been temporarily locked. '
-                        'Please try again in 15 minutes or reset your password.'
+                        'Please try again in 30 minutes.'
                     )
-                else:
-                    attempts_remaining = 5 - user.failed_login_attempts
-                    messages.error(
-                        request,
-                        f'Invalid username or password. {attempts_remaining} attempts remaining.'
-                    )
+                    
+                    # Lock the account for 30 minutes
+                    failed_user.account_locked_until = timezone.now() + timedelta(minutes=30)
+                    failed_user.save()
             else:
                 # Generic error message to avoid username enumeration
                 messages.error(request, 'Invalid username or password.')
@@ -334,27 +371,55 @@ def verify_email_code(request):
     if request.method == 'POST':
         entered_code = request.POST.get('verification_code', '').strip()
         
-        # Check if code matches and is not expired (15 minutes)
-        if (user.verification_code == entered_code and 
-            timezone.now() - user.verification_code_created < timedelta(minutes=15)):
-            
-            # Mark email as verified and activate account
-            user.is_active = True
-            user.email_verified = True
-            user.verification_code = None
-            user.verification_code_created = None
-            user.save()
-            
-            # Clear session data
-            if 'verification_user_id' in request.session:
-                del request.session['verification_user_id']
-            if 'verification_email' in request.session:
-                del request.session['verification_email']
-            
-            messages.success(request, 'Email verified successfully! You can now log in.')
-            return redirect('lecturer:login')
-        else:
-            messages.error(request, 'Invalid or expired verification code. Please try again.')
+        # Debug information
+        print(f"DEBUG: Entered code: '{entered_code}'")
+        print(f"DEBUG: Stored code: '{user.verification_code}'")
+        print(f"DEBUG: Code created: {user.verification_code_created}")
+        print(f"DEBUG: Current time: {timezone.now()}")
+        
+        # Check if user has a verification code
+        if not user.verification_code or not user.verification_code_created:
+            messages.error(request, 'No verification code found. Please request a new code.')
+            return render(request, 'lecturer/verify_email_code.html', {
+                'email': user_email,
+                'title': 'Verify Email'
+            })
+        
+        # Check if code matches
+        if user.verification_code != entered_code:
+            messages.error(request, 'Invalid verification code. Please check and try again.')
+            return render(request, 'lecturer/verify_email_code.html', {
+                'email': user_email,
+                'title': 'Verify Email'
+            })
+        
+        # Check if code is expired (15 minutes)
+        time_diff = timezone.now() - user.verification_code_created
+        print(f"DEBUG: Time difference: {time_diff}")
+        print(f"DEBUG: Is expired: {time_diff > timedelta(minutes=15)}")
+        
+        if time_diff > timedelta(minutes=15):
+            messages.error(request, 'Verification code has expired. Please request a new code.')
+            return render(request, 'lecturer/verify_email_code.html', {
+                'email': user_email,
+                'title': 'Verify Email'
+            })
+        
+        # Code is valid - mark email as verified and activate account
+        user.is_active = True
+        user.email_verified = True
+        user.verification_code = None
+        user.verification_code_created = None
+        user.save()
+        
+        # Clear session data
+        if 'verification_user_id' in request.session:
+            del request.session['verification_user_id']
+        if 'verification_email' in request.session:
+            del request.session['verification_email']
+        
+        messages.success(request, 'Email verified successfully! You can now log in.')
+        return redirect('lecturer:login')
     
     return render(request, 'lecturer/verify_email_code.html', {
         'email': user_email,
@@ -411,8 +476,8 @@ def register(request):
         else:
             # Log failed registration attempt
             ip_address = get_client_ip(request)
-            username = request.POST.get('username')
-            log_login_attempt(ip_address, username, successful=False)
+            email = request.POST.get('email', 'unknown')
+            log_login_attempt(ip_address, email, successful=False)
             
             messages.error(request, 'Registration failed. Please check the form for errors.')
     else:

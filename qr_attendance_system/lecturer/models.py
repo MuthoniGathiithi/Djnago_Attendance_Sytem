@@ -18,6 +18,11 @@ class Lecturer(AbstractUser):
     email_change_token = models.CharField(max_length=100, blank=True, null=True)
     email_change_token_created = models.DateTimeField(blank=True, null=True)
     
+    # Fields for login attempt tracking
+    failed_login_attempts = models.PositiveIntegerField(default=0)
+    last_failed_login = models.DateTimeField(blank=True, null=True)
+    account_locked_until = models.DateTimeField(blank=True, null=True)
+    
     class Meta:
         verbose_name = 'Lecturer'
         verbose_name_plural = 'Lecturers'

@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'form',
     'lecturer',  # Assuming you have a lecturer app
-
 ]
 
 MIDDLEWARE = [
@@ -132,40 +131,40 @@ AUTH_USER_MODEL = 'lecturer.Lecturer'
 
 # Email Configuration
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# First, get the .env file path
+env_path = BASE_DIR.parent / '.env'
+print(f"Loading .env file from: {env_path}")
+print(f"File exists: {env_path.exists()}")
+
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(env_path, override=True)
 
-# Email settings
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+# Email configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.sendgrid.net')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'apikey')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Attendance System <noreply@example.com>')
-SERVER_EMAIL = DEFAULT_FROM_EMAIL  # For error notifications
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'gathiithijoyce74@gmail.com')
 
-# Email timeout in seconds
-EMAIL_TIMEOUT = 10
-
-# Email error logging
-EMAIL_BACKEND_ALIASES = {
-    'console': 'django.core.mail.backends.console.EmailBackend',
-    'smtp': 'django.core.mail.backends.smtp.EmailBackend',
-    'file': 'django.core.mail.backends.filebased.EmailBackend',
-    'memory': 'django.core.mail.backends.locmem.EmailBackend',
-    'dummy': 'django.core.mail.backends.dummy.EmailBackend'
-}
-
-# Validate email backend
-if EMAIL_BACKEND in EMAIL_BACKEND_ALIASES:
-    EMAIL_BACKEND = EMAIL_BACKEND_ALIASES[EMAIL_BACKEND]
-
-# File-based email backend settings (for development)
-if EMAIL_BACKEND == 'django.core.mail.backends.filebased.EmailBackend':
-    EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
+# Debug output - Final email configuration
+print("\n=== FINAL EMAIL CONFIGURATION ===")
+print(f"EMAIL_BACKEND: {EMAIL_BACKEND}")
+print(f"EMAIL_HOST: {EMAIL_HOST}")
+print(f"EMAIL_PORT: {EMAIL_PORT}")
+print(f"EMAIL_USE_TLS: {EMAIL_USE_TLS}")
+print(f"EMAIL_HOST_USER: {EMAIL_HOST_USER}")
+print(f"EMAIL_HOST_PASSWORD: {'*' * len(EMAIL_HOST_PASSWORD) if EMAIL_HOST_PASSWORD else 'NOT SET'}")
+print(f"DEFAULT_FROM_EMAIL: {DEFAULT_FROM_EMAIL}")
+print(f"Using .env file at: {env_path}")
+print("================================\n")
 
 # Security Settings
 # Session Configuration
@@ -187,4 +186,3 @@ LOGOUT_REDIRECT_URL = '/lecturer/login/'
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-

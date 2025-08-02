@@ -1,97 +1,175 @@
-{% extends 'lecturer/base.html' %}
-{% load static %}
-
-{% block title %}{{ title }} - QR Attendance System{% endblock %}
-
-{% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white text-center py-3">
-                    <h4 class="mb-0">Verify Your Email</h4>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verify Your Email - QR Attendance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { 
+            background: #f0f2f5; 
+            padding: 2rem 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .verification-card { 
+            max-width: 450px; 
+            margin: 2rem auto;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            background: #4a6bdf;
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: 10px 10px 0 0 !important;
+            border: none;
+        }
+        .card-body {
+            padding: 2rem;
+            background: white;
+            border-radius: 0 0 10px 10px;
+        }
+        .verification-icon {
+            font-size: 2.5rem;
+            color: #4a6bdf;
+            margin-bottom: 1rem;
+        }
+        .code-input { 
+            font-size: 1.8rem; 
+            letter-spacing: 0.8rem;
+            text-align: center;
+            padding: 1rem 0.5rem;
+            height: auto;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+        }
+        .code-input:focus {
+            border-color: #4a6bdf;
+            box-shadow: 0 0 0 0.25rem rgba(74, 107, 223, 0.25);
+        }
+        .btn-verify {
+            background: #4a6bdf;
+            border: none;
+            padding: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+        }
+        .btn-verify:hover {
+            background: #3a5bd9;
+            transform: translateY(-1px);
+        }
+        .resend-text {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+        .resend-link {
+            color: #4a6bdf;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .resend-link:hover {
+            text-decoration: underline;
+        }
+        .email-display {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 1rem 0;
+            text-align: center;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card verification-card">
+            <div class="card-header">
+                <h3 class="mb-0">Verify Your Email Address</h3>
+            </div>
+            <div class="card-body text-center">
+                <div class="verification-icon">
+                    <i class="fas fa-envelope"></i>
                 </div>
-                <div class="card-body p-4">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
 
-                    <div class="text-center mb-4">
-                        <i class="fas fa-envelope-open-text fa-4x text-primary mb-3"></i>
-                        <h5>Enter Verification Code</h5>
-                        <p class="text-muted">We've sent a 6-digit verification code to <strong>{{ email }}</strong>.</p>
-                        <p class="text-muted small">Please check your inbox and enter the code below. The code will expire in 15 minutes.</p>
+                <h4 class="mb-3">Enter Verification Code</h4>
+                <p class="mb-3">Enter the code we sent to <strong>{{ email|default:"your email" }}</strong></p>
+                
+                <form method="post" class="verification-form">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <input type="text" 
+                               name="verification_code" 
+                               class="form-control code-input"
+                               maxlength="6" 
+                               pattern="\d{6}" 
+                               placeholder="_ _ _ _ _ _"
+                               required
+                               autocomplete="off"
+                               inputmode="numeric">
                     </div>
-
-                    <form method="post" class="needs-validation" novalidate>
-                        {% csrf_token %}
-                        <div class="mb-4">
-                            <div class="verification-code-inputs d-flex justify-content-center gap-2">
-                                <input type="text" name="verification_code" 
-                                       class="form-control form-control-lg text-center verification-input" 
-                                       maxlength="6" 
-                                       pattern="\d{6}" 
-                                       placeholder="123456"
-                                       required
-                                       style="font-size: 1.5rem; letter-spacing: 0.5rem;">
-                            </div>
-                            <div class="invalid-feedback text-center">
-                                Please enter the 6-digit verification code.
-                            </div>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-check-circle me-2"></i>Verify Email
-                            </button>
-                            <a href="{% url 'lecturer:resend_verification' %}" class="btn btn-outline-secondary">
-                                <i class="fas fa-redo me-2"></i>Resend Code
-                            </a>
-                        </div>
-                    </form>
+                    <button type="submit" class="btn btn-primary btn-verify w-100">
+                        Verify Email Address
+                    </button>
+                </form>
+                
+                <div class="resend-text">
+                    Didn't receive the code? 
+                    <a href="{% url 'lecturer:resend_verification' %}?email={{ email|urlencode }}" class="resend-link">
+                        Resend Code
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-</div>
-
-<style>
-.verification-input {
-    max-width: 250px;
-    margin: 0 auto;
-    text-align: center;
-}
-
-.verification-input:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-</style>
-
-<script>
-// Auto-format the verification code input
-document.addEventListener('DOMContentLoaded', function() {
-    const input = document.querySelector('.verification-input');
     
-    // Only allow numbers
-    input.addEventListener('input', function(e) {
-        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const input = document.querySelector('input[name="verification_code"]');
+        const form = document.querySelector('.verification-form');
+        
+        // Only allow numbers and auto-submit on 6 digits
+        input.addEventListener('input', function(e) {
+            // Remove any non-digit characters
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+            
+            // Auto-advance to next input (if implementing multiple inputs)
+            // Auto-submit when 6 digits are entered
+            if (this.value.length === 6) {
+                form.submit();
+            }
+        });
+        
+        // Handle paste event
+        input.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const paste = (e.clipboardData || window.clipboardData).getData('text');
+            const numbers = paste.replace(/[^0-9]/g, '');
+            this.value = numbers.slice(0, 6);
+            
+            if (this.value.length === 6) {
+                form.submit();
+            }
+        });
+        
+        // Focus the input on page load
+        input.focus();
     });
-    
-    // Auto-submit when 6 digits are entered
-    input.addEventListener('keyup', function(e) {
-        if (this.value.length === 6) {
-            this.form.submit();
-        }
-    });
-    
-    // Focus the input on page load
-    input.focus();
-});
-</script>
-{% endblock %}
+    </script>
+</body>
+</html>

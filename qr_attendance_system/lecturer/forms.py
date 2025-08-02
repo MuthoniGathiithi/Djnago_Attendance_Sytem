@@ -15,11 +15,10 @@ class LecturerRegistrationForm(UserCreationForm):
     last_name = forms.CharField(max_length=30, required=True, widget=forms.TextInput(attrs={'placeholder': 'Last Name'}))
     email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={'placeholder': 'Email Address'}))
     department = forms.CharField(max_length=100, required=True, widget=forms.TextInput(attrs={'placeholder': 'Department'}))
-    phone_number = forms.CharField(max_length=15, required=False, widget=forms.TextInput(attrs={'placeholder': 'Phone Number (Optional)'}))
 
     class Meta:
         model = Lecturer
-        fields = ('username', 'first_name', 'last_name', 'email', 'department', 'phone_number', 'password1', 'password2')
+        fields = ('first_name', 'last_name', 'email', 'department', 'password1', 'password2')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -35,23 +34,34 @@ class LecturerRegistrationForm(UserCreationForm):
     
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        if email and Lecturer.objects.filter(email=email).exists():
-            raise forms.ValidationError('A lecturer with this email address already exists.')
+        # Temporarily disabled for debugging
+        # if email and Lecturer.objects.filter(email=email).exists():
+        #     raise forms.ValidationError('A lecturer with this email address already exists.')
+        print(f"DEBUG: Checking email {email}")
+        from lecturer.models import Lecturer
+        existing_count = Lecturer.objects.filter(email=email).count()
+        print(f"DEBUG: Found {existing_count} lecturers with email {email}")
         return email
-    
-    def clean_username(self):
-        username = self.cleaned_data.get('username')
-        if username and Lecturer.objects.filter(username=username).exists():
-            raise forms.ValidationError('A lecturer with this username already exists.')
-        return username
 
     def save(self, commit=True):
         user = super().save(commit=False)
+        
+        # Auto-generate username from email address
+        email = self.cleaned_data['email']
+        base_username = email.split('@')[0]  # Use part before @ as base username
+        username = base_username
+        
+        # Ensure username is unique by adding a number if needed
+        counter = 1
+        while Lecturer.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+        
+        user.username = username
         user.is_staff = True  # Set is_staff to True for lecturers
         user.email = self.cleaned_data['email']
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
-        user.phone_number = self.cleaned_data['phone_number']
         user.department = self.cleaned_data['department']
         
         if commit:

@@ -87,10 +87,11 @@ def send_verification_email(request, lecturer):
         html_content = render_to_string('lecturer/emails/verification_email.html', context)
         
         # Create email message
+        from_email = f'QR Attendance System <{settings.DEFAULT_FROM_EMAIL}>'
         email = EmailMultiAlternatives(
             subject=subject,
             body=text_content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=from_email,
             to=[lecturer.email],
             reply_to=[settings.DEFAULT_FROM_EMAIL],
         )
@@ -213,10 +214,11 @@ def send_email_change_verification(request, lecturer):
         )
         
         # Send email
+        from_email = f'QR Attendance System <{settings.DEFAULT_FROM_EMAIL}>'
         email = EmailMultiAlternatives(
             subject=subject,
             body=text_content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=from_email,
             to=[lecturer.new_email],
             reply_to=[settings.DEFAULT_FROM_EMAIL]
         )
