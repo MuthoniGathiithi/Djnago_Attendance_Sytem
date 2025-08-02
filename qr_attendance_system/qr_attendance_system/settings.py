@@ -131,17 +131,41 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'lecturer.Lecturer'
 
 # Email Configuration
-# For development, use console backend to see emails in terminal
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+import os
+from dotenv import load_dotenv
 
-# For production, use SMTP (uncomment and configure these)
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')  # Your email
-# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')  # App password
-# DEFAULT_FROM_EMAIL = 'Attendance System <noreply@yourdomain.com>'
+# Load environment variables from .env file
+load_dotenv()
+
+# Email settings
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Attendance System <noreply@example.com>')
+SERVER_EMAIL = DEFAULT_FROM_EMAIL  # For error notifications
+
+# Email timeout in seconds
+EMAIL_TIMEOUT = 10
+
+# Email error logging
+EMAIL_BACKEND_ALIASES = {
+    'console': 'django.core.mail.backends.console.EmailBackend',
+    'smtp': 'django.core.mail.backends.smtp.EmailBackend',
+    'file': 'django.core.mail.backends.filebased.EmailBackend',
+    'memory': 'django.core.mail.backends.locmem.EmailBackend',
+    'dummy': 'django.core.mail.backends.dummy.EmailBackend'
+}
+
+# Validate email backend
+if EMAIL_BACKEND in EMAIL_BACKEND_ALIASES:
+    EMAIL_BACKEND = EMAIL_BACKEND_ALIASES[EMAIL_BACKEND]
+
+# File-based email backend settings (for development)
+if EMAIL_BACKEND == 'django.core.mail.backends.filebased.EmailBackend':
+    EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
 
 # Security Settings
 # Session Configuration
